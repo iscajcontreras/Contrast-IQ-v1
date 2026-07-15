@@ -1,0 +1,192 @@
+<div class="flex flex-auto">
+  <div
+    class="flex flex-auto items-center justify-center bg-white p-4 sm:p-12 dark:bg-neutral-950"
+  >
+    <div class="flex w-full max-w-80 flex-col sm:min-w-80">
+      <!-- Logo -->
+      <img
+        class="w-32"
+        src="/images/logo/bracco-logo.png"
+        alt="Bracco logo"
+      />
+
+      <!-- Title -->
+      <div class="leading-tight mt-8 text-4xl font-extrabold tracking-tight">
+        Sign in
+      </div>
+      <div class="mt-0.5 flex items-baseline font-medium">
+        <div class="text-neutral-500">Don't have an account?</div>
+        <a
+          class="ml-1 underline"
+          routerLink="/auth/sign-up"
+        >
+          Sign up
+        </a>
+      </div>
+
+      <!-- Sign in form -->
+      <form
+        class="mt-8"
+        (submit)="signIn($event)"
+      >
+        <div class="flex flex-col gap-y-4">
+          <!-- Email field -->
+          <mat-form-field class="w-full">
+            <mat-label>Email address</mat-label>
+            <input
+              id="email"
+              matInput
+              [formField]="signInForm.email"
+            />
+            <mat-error>
+              @if (
+                signInForm.email().touched() && signInForm.email().invalid()
+              ) {
+                @for (error of signInForm.email().errors(); track error) {
+                  {{ error.message }}
+                }
+              }
+            </mat-error>
+          </mat-form-field>
+
+          <!-- Password field -->
+          <mat-form-field
+            appearance="fill"
+            class="w-full"
+          >
+            <mat-label>Password</mat-label>
+            <input
+              id="password"
+              matInput
+              type="password"
+              [formField]="signInForm.password"
+              #passwordField
+            />
+            <button
+              matIconButton
+              type="button"
+              (click)="
+                passwordField.type === 'password'
+                  ? (passwordField.type = 'text')
+                  : (passwordField.type = 'password')
+              "
+              matSuffix
+            >
+              @if (passwordField.type === 'password') {
+                <mat-icon
+                  class="size-5"
+                  svgIcon="eye"
+                ></mat-icon>
+              }
+              @if (passwordField.type === 'text') {
+                <mat-icon
+                  class="size-5"
+                  svgIcon="eye-off"
+                ></mat-icon>
+              }
+            </button>
+            <mat-error>
+              @if (
+                signInForm.password().touched() &&
+                signInForm.password().invalid()
+              ) {
+                @for (error of signInForm.password().errors(); track error) {
+                  {{ error.message }}
+                }
+              }
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <!-- Actions -->
+        <div class="mt-2 flex w-full items-center justify-between">
+          <mat-checkbox class="-ml-2">Remember me</mat-checkbox>
+          <a
+            class="font-medium underline"
+            routerLink="/auth/forgot-password"
+          >
+            Forgot password?
+          </a>
+        </div>
+
+        <!-- Submit button -->
+        <button
+          type="submit"
+          matButton="filled"
+          class="mt-6 w-full"
+          [disabled]="signInForm().invalid() || enviando()"
+        >
+          Sign in
+        </button>
+      </form>
+
+      <!-- Alert -->
+      @if (error()) {
+        <div
+          class="mt-8 rounded-lg bg-red-50 p-4 text-red-700 dark:bg-red-950 dark:text-red-200"
+        >
+          {{ error() }}
+        </div>
+      }
+    </div>
+  </div>
+
+  <div
+    class="relative hidden flex-auto items-center justify-center overflow-hidden border-l bg-neutral-950 p-8 sm:px-12 md:flex"
+  >
+    <!-- Background -->
+    <!-- Rings -->
+    <!-- prettier-ignore -->
+    <svg class="absolute inset-0 pointer-events-none"
+         viewBox="0 0 960 540" width="100%" height="100%" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+      <g class="text-neutral-700/25" fill="none" stroke="currentColor" stroke-width="100">
+        <circle r="234" cx="196" cy="23"></circle>
+        <circle r="234" cx="790" cy="491"></circle>
+      </g>
+    </svg>
+
+    <!-- Dots -->
+    <!-- prettier-ignore -->
+    <svg class="absolute -top-16 -right-16 text-neutral-700"
+         viewBox="0 0 220 192" width="220" height="192" fill="none">
+      <defs>
+        <pattern id="837c3e70-6c3a-44e6-8854-cc48c737b659" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+          <rect x="0" y="0" width="4" height="4" fill="currentColor"></rect>
+        </pattern>
+      </defs>
+      <rect width="220" height="192" fill="url(#837c3e70-6c3a-44e6-8854-cc48c737b659)"></rect>
+    </svg>
+
+    <!-- Content -->
+    <div class="relative z-10 w-full max-w-2xl">
+      <!-- Ilustracion: inyector de contraste + gantry de TAC -->
+      <svg
+        class="mb-10 h-40 w-40 text-white/90"
+        viewBox="0 0 200 200"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <circle cx="100" cy="100" r="92" stroke="currentColor" stroke-width="6" stroke-dasharray="10 8" opacity="0.35" />
+        <circle cx="100" cy="100" r="66" stroke="#1D9E75" stroke-width="6" opacity="0.9" />
+        <g transform="translate(62, 78)">
+          <rect x="0" y="14" width="58" height="24" rx="6" fill="#1D9E75" />
+          <rect x="52" y="20" width="16" height="12" rx="2" fill="#1D9E75" />
+          <rect x="-10" y="22" width="12" height="8" rx="2" fill="#1D9E75" opacity="0.7" />
+          <rect x="20" y="0" width="6" height="14" fill="#ffffff" opacity="0.9" />
+          <rect x="34" y="0" width="6" height="14" fill="#ffffff" opacity="0.9" />
+        </g>
+        <path d="M100 146c-14 8-24 20-24 20h48s-10-12-24-20z" fill="#0057A6" opacity="0.9" />
+      </svg>
+
+      <div class="leading-tight text-5xl font-bold text-white">
+        Bienvenido al sistema de inyeccion de contraste
+      </div>
+      <div class="text-medium mt-6 text-xl text-neutral-500">
+        El sistema Empower CTA+ es un inyector robusto e intuitivo a base de
+        jeringas para la administracion de medios de contraste en tomografia
+        computarizada. Este sistema ha sido rediseñado para garantizar la
+        eficiencia operativa y la seguridad del paciente.
+      </div>
+    </div>
+  </div>
+</div>

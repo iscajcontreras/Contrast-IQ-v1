@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-ContrastIqBackendApplication<backend-contrastiq>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.contrastiq.backend.ContrastIqBackendApplication",
+            "projectName": "backend-contrastiq",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
