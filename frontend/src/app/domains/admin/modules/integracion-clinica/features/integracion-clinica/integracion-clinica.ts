@@ -1,5 +1,5 @@
-import { DatePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,6 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { firstValueFrom } from 'rxjs';
+import { ssrSeguro } from '@/app/core/ssr/ssr-seguro';
 import {
   DatosPacienteHis,
   IntegracionClinicaApiService,
@@ -144,6 +145,7 @@ import {
 })
 export default class IntegracionClinica {
   private api = inject(IntegracionClinicaApiService);
+  private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
 
   protected hisHabilitado = signal(false); // el backend siempre responde "simulado" mientras esto no cambie
   protected mrnBusqueda = '';
@@ -154,7 +156,10 @@ export default class IntegracionClinica {
   protected sincronizando = signal(false);
   protected mensajeSincronizacion = signal<string | null>(null);
 
-  protected historial = rxResource({ stream: () => this.api.historialSincronizacion() });
+  protected historial = rxResource({
+    stream: () =>
+      ssrSeguro(this.esNavegador, () => this.api.historialSincronizacion(), { content: [], totalElements: 0 }),
+  });
 
   async buscarEnHis() {
     this.errorHis.set(null);

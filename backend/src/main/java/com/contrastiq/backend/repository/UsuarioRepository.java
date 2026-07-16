@@ -22,4 +22,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long>, JpaSpec
     // viene cargado en la misma consulta, sin depender de una sesion viva.
     @Query("select u from Usuario u join fetch u.rol where u.email = :email")
     Optional<Usuario> findByEmailConRol(@Param("email") String email);
+
+    // Igual que findByEmailConRol, mas la sede (LEFT JOIN FETCH porque
+    // sede_id es nullable -- un usuario sin sede asignada es valido).
+    // Usada por UsuarioAutenticadoService para resolver la restriccion
+    // de sede del usuario autenticado sin arriesgar
+    // LazyInitializationException (hallazgo DEF-03 del QA de julio 2026).
+    @Query("select u from Usuario u join fetch u.rol left join fetch u.sede where u.email = :email")
+    Optional<Usuario> findByEmailConRolYSede(@Param("email") String email);
 }

@@ -2,6 +2,7 @@ package com.contrastiq.backend.service;
 
 import com.contrastiq.backend.dto.ComparativaSedeDTO;
 import com.contrastiq.backend.repository.InyeccionRepository;
+import com.contrastiq.backend.util.ValidadorRangoFechas;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -25,6 +26,7 @@ public class ReporteEjecutivoService {
 
     @Transactional(readOnly = true)
     public List<ComparativaSedeDTO> comparativaSedes(LocalDateTime desde, LocalDateTime hasta) {
+        ValidadorRangoFechas.validar(desde, hasta);
         List<Object[]> filas = inyeccionRepository.comparativaPorSede(desde, hasta);
 
         return filas.stream().map(f -> {

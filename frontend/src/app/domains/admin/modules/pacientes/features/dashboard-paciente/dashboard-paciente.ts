@@ -1,6 +1,7 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe, isPlatformBrowser } from '@angular/common';
 import {
   Component,
+  PLATFORM_ID,
   TemplateRef,
   inject,
   signal,
@@ -18,6 +19,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { FirmaCanvas } from '@/app/core/firma-canvas/firma-canvas';
+import { ssrSeguro } from '@/app/core/ssr/ssr-seguro';
 import {
   PacientesApiService,
   PacienteResumen,
@@ -395,6 +397,7 @@ import {
 })
 export default class DashboardPaciente {
   private api = inject(PacientesApiService);
+  private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
   private matDialog = inject(MatDialog);
   dialogRef: MatDialogRef<unknown> | null = null;
 
@@ -405,27 +408,49 @@ export default class DashboardPaciente {
 
   protected resultados = rxResource({
     params: () => this.busqueda(),
-    stream: ({ params }) => (params.length >= 2 ? this.api.buscar(params) : of({ content: [], totalElements: 0 })),
+    stream: ({ params }) =>
+      params.length >= 2
+        ? ssrSeguro(this.esNavegador, () => this.api.buscar(params), { content: [], totalElements: 0 })
+        : of({ content: [], totalElements: 0 }),
   });
 
   protected perfil = rxResource({
     params: () => this.pacienteSeleccionado()?.id ?? null,
-    stream: ({ params }) => (params ? this.api.obtenerDetalle(params) : of(null)),
+    stream: ({ params }) =>
+      params
+        ? ssrSeguro(this.esNavegador, () => this.api.obtenerDetalle(params), {
+            id: 0,
+            identificadorExterno: '',
+            nombreCompleto: null,
+            sexo: '',
+            pesoKg: null,
+            creatininaMgDl: null,
+            gfrMlMin: null,
+            riesgoRenal: false,
+            alergias: null,
+            totalInyecciones: 0,
+            volumenTotalRecibidoMl: 0,
+            dlpTotalMgyCm: null,
+            ultimaInyeccion: null,
+            alertasEdaFueraDeRango: 0,
+            inyeccionesAbortadasOError: 0,
+          })
+        : of(null),
   });
 
   protected historial = rxResource({
     params: () => this.pacienteSeleccionado()?.id ?? null,
-    stream: ({ params }) => (params ? this.api.historialInyecciones(params) : of([])),
+    stream: ({ params }) => (params ? ssrSeguro(this.esNavegador, () => this.api.historialInyecciones(params), []) : of([])),
   });
 
   protected reacciones = rxResource({
     params: () => this.pacienteSeleccionado()?.id ?? null,
-    stream: ({ params }) => (params ? this.api.reacciones(params) : of([])),
+    stream: ({ params }) => (params ? ssrSeguro(this.esNavegador, () => this.api.reacciones(params), []) : of([])),
   });
 
   protected checklists = rxResource({
     params: () => this.pacienteSeleccionado()?.id ?? null,
-    stream: ({ params }) => (params ? this.api.historialChecklists(params) : of([])),
+    stream: ({ params }) => (params ? ssrSeguro(this.esNavegador, () => this.api.historialChecklists(params), []) : of([])),
   });
 
   onBuscar(valor: string) {

@@ -3,6 +3,7 @@ package com.contrastiq.backend.service;
 import com.contrastiq.backend.dto.ActualizarUsuarioRequest;
 import com.contrastiq.backend.dto.CrearUsuarioRequest;
 import com.contrastiq.backend.dto.UsuarioResumenDTO;
+import com.contrastiq.backend.model.Auditoria;
 import com.contrastiq.backend.model.Sede;
 import com.contrastiq.backend.model.Usuario;
 import com.contrastiq.backend.model.enums.ProveedorAutenticacion;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 // Pantalla "Gestion de usuarios": alta, edicion, activar/desactivar.
 // Toda mutacion queda restringida a ADMIN a nivel de controller
@@ -34,6 +36,7 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
     private final TokenRefrescoRepository tokenRefrescoRepository;
     private final HistorialAccesoRepository historialAccesoRepository;
+    private final AuditoriaService auditoriaService;
 
     @Transactional(readOnly = true)
     public Page<UsuarioResumenDTO> buscar(Long sedeId, Long rolId, Boolean activo, String busqueda, Pageable pageable) {
@@ -65,7 +68,10 @@ public class UsuarioService {
                 .activo(true)
                 .build();
 
-        return aResumen(usuarioRepository.save(usuario));
+        Usuario creado = usuarioRepository.save(usuario);
+        auditoriaService.registrar("usuarios", creado.getId(), Auditoria.Accion.CREAR,
+                Map.of("email", creado.getEmail(), "rol", creado.getRol().getNombre().name()));
+        return aResumen(creado);
     }
 
     @Transactional
@@ -75,14 +81,20 @@ public class UsuarioService {
         usuario.setRol(rolRepository.findById(request.getRolId())
                 .orElseThrow(() -> new IllegalArgumentException("El rol seleccionado no existe")));
         usuario.setSede(resolverSede(request.getSedeId()));
-        return aResumen(usuarioRepository.save(usuario));
+        Usuario actualizado = usuarioRepository.save(usuario);
+        auditoriaService.registrar("usuarios", actualizado.getId(), Auditoria.Accion.ACTUALIZAR,
+                Map.of("rol", actualizado.getRol().getNombre().name()));
+        return aResumen(actualizado);
     }
 
     @Transactional
     public UsuarioResumenDTO cambiarEstado(Long id, boolean activo) {
         Usuario usuario = buscarPorId(id);
         usuario.setActivo(activo);
-        return aResumen(usuarioRepository.save(usuario));
+        Usuario guardado = usuarioRepository.save(usuario);
+        auditoriaService.registrar("usuarios", guardado.getId(), Auditoria.Accion.ACTUALIZAR,
+                Map.of("activo", activo));
+        return aResumen(guardado);
     }
 
     private Usuario buscarPorId(Long id) {

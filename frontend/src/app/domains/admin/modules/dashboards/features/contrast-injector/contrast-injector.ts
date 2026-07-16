@@ -1,5 +1,5 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
+import { DatePipe, DecimalPipe, isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCard } from '@angular/material/card';
@@ -24,6 +24,7 @@ import {
   ChartComponent,
 } from 'ng-apexcharts';
 import { Theming } from '@/app/core/theming';
+import { ssrSeguro } from '@/app/core/ssr/ssr-seguro';
 import {
   ContrastInjectorApiService,
   OpcionFiltro,
@@ -427,6 +428,7 @@ function calcularRango(preset: Exclude<RangoPreset, 'personalizado'>): { desde: 
 })
 export default class ContrastInjectorDashboard {
   private api = inject(ContrastInjectorApiService);
+  private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
   private theming = inject(Theming);
   private matDialog = inject(MatDialog);
   dialogRef: MatDialogRef<unknown> | null = null;
@@ -474,24 +476,36 @@ export default class ContrastInjectorDashboard {
   });
 
   // --- Catalogos para los <mat-select> (se cargan una sola vez) ---
-  salas = rxResource({ stream: () => this.api.getSalas() });
-  identificadores = rxResource({ stream: () => this.api.getIdentificadoresAnatomicos() });
-  agentes = rxResource({ stream: () => this.api.getAgentesContraste() });
+  salas = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.getSalas(), []) });
+  identificadores = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.getIdentificadoresAnatomicos(), []) });
+  agentes = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.getAgentesContraste(), []) });
 
   // --- Datos del dashboard, recalculados cuando cambia el rango de fechas ---
   kpis = rxResource({
     params: () => this.rangoFechas(),
-    stream: ({ params }) => this.api.getKpis(params.desde, params.hasta),
+    stream: ({ params }) =>
+      ssrSeguro(
+        this.esNavegador,
+        () => this.api.getKpis(params.desde, params.hasta),
+        {
+          inyeccionesEnPeriodo: 0,
+          volumenTotalMl: 0,
+          volumenPromedioMl: 0,
+          alertasEdaFueraDeRango: 0,
+          inyectoresActivos: 0,
+          inyectoresTotales: 0,
+        }
+      ),
   });
 
   usoContraste = rxResource({
     params: () => this.rangoFechas(),
-    stream: ({ params }) => this.api.getUsoContraste(params.desde, params.hasta),
+    stream: ({ params }) => ssrSeguro(this.esNavegador, () => this.api.getUsoContraste(params.desde, params.hasta), []),
   });
 
   distribucion = rxResource({
     params: () => this.rangoFechas(),
-    stream: ({ params }) => this.api.getDistribucionProtocolo(params.desde, params.hasta),
+    stream: ({ params }) => ssrSeguro(this.esNavegador, () => this.api.getDistribucionProtocolo(params.desde, params.hasta), []),
   });
 
   // --- Tabla, recalculada cuando cambia cualquier filtro ---
@@ -507,17 +521,22 @@ export default class ContrastInjectorDashboard {
       size: this.pageSize(),
     }),
     stream: ({ params }) =>
-      this.api.getInyecciones({
-        fechaInicio: `${params.desde}T00:00:00`,
-        fechaFin: `${params.hasta}T23:59:59`,
-        salaId: params.salaId,
-        identificadorAnatomicoId: params.identificadorAnatomicoId,
-        agenteId: params.agenteId,
-        estado: params.estado,
-        soloConAlertaEda: params.soloConAlertaEda,
-        page: params.page,
-        size: params.size,
-      }),
+      ssrSeguro(
+        this.esNavegador,
+        () =>
+          this.api.getInyecciones({
+            fechaInicio: `${params.desde}T00:00:00`,
+            fechaFin: `${params.hasta}T23:59:59`,
+            salaId: params.salaId,
+            identificadorAnatomicoId: params.identificadorAnatomicoId,
+            agenteId: params.agenteId,
+            estado: params.estado,
+            soloConAlertaEda: params.soloConAlertaEda,
+            page: params.page,
+            size: params.size,
+          }),
+        { content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 }
+      ),
   });
 
   usoContrasteChart = computed(() => {

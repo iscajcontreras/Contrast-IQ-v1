@@ -63,6 +63,13 @@ public class AuthService {
     @Value("${app.jwt.refresh-token-dias:7}")
     private long refreshTokenDias;
 
+    // Fix DEF-01 (QA julio 2026): bloqueo temporal de cuenta tras varios
+    // intentos fallidos consecutivos (fuerza bruta). historial_accesos ya
+    // registraba cada intento -- no habia ningun bloqueo que lo usara.
+    private static final int MAX_INTENTOS_FALLIDOS = 5;
+    private static final long VENTANA_INTENTOS_MINUTOS = 15;
+    private static final long BLOQUEO_MINUTOS = 15;
+
     // --- Sign up ---
     @Transactional
     public void registrar(RegistroRequest request) {
@@ -91,6 +98,18 @@ public class AuthService {
     public TokenResponse login(LoginRequest request, HttpServletRequest httpRequest) {
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail()).orElse(null);
 
+        // Fix DEF-01 (QA julio 2026): si la cuenta esta bloqueada y el
+        // bloqueo sigue vigente, rechazar sin ni siquiera comparar la
+        // contrasena. Se registra igual en el historial (como fallido)
+        // para conservar la traza completa de intentos.
+        if (usuario != null && usuario.getBloqueadoHasta() != null
+                && usuario.getBloqueadoHasta().isAfter(LocalDateTime.now())) {
+            historialAccesoService.registrar(request.getEmail(), false, ProveedorAutenticacion.LOCAL,
+                    httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
+            throw new BadCredentialsException(
+                    "Cuenta bloqueada temporalmente por multiples intentos fallidos. Intenta de nuevo mas tarde.");
+        }
+
         boolean credencialesValidas = usuario != null
                 && usuario.getPasswordHash() != null
                 && Boolean.TRUE.equals(usuario.getActivo())
@@ -100,7 +119,28 @@ public class AuthService {
                 httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
 
         if (!credencialesValidas) {
+            // Fix DEF-01 (QA julio 2026): si ya hay MAX_INTENTOS_FALLIDOS
+            // (incluyendo el que se acaba de registrar) dentro de la
+            // ventana, bloquear la cuenta. Solo aplica si el email
+            // corresponde a una cuenta real (usuario != null) -- un
+            // atacante probando emails inexistentes no puede "bloquear"
+            // nada que no exista.
+            if (usuario != null) {
+                long fallidosRecientes = historialAccesoService.contarFallidosRecientes(
+                        request.getEmail(), LocalDateTime.now().minusMinutes(VENTANA_INTENTOS_MINUTOS));
+                if (fallidosRecientes >= MAX_INTENTOS_FALLIDOS) {
+                    usuario.setBloqueadoHasta(LocalDateTime.now().plusMinutes(BLOQUEO_MINUTOS));
+                    usuarioRepository.save(usuario);
+                }
+            }
             throw new BadCredentialsException("Correo o contrasena incorrectos");
+        }
+
+        // Login exitoso: si venia de un bloqueo ya expirado, limpiar el
+        // campo explicitamente en vez de dejarlo con una fecha pasada.
+        if (usuario.getBloqueadoHasta() != null) {
+            usuario.setBloqueadoHasta(null);
+            usuarioRepository.save(usuario);
         }
 
         return emitirTokens(usuario);

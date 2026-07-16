@@ -11,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 // "Historial de accesos visible en la UI": registra cada intento de
 // login (exitoso o fallido) y lo expone para la pantalla de gestion de
 // usuarios. Se llama directo desde AuthService.login() (antes se
@@ -35,6 +37,14 @@ public class HistorialAccesoService {
                 .userAgent(userAgent)
                 .build();
         historialRepository.save(registro);
+    }
+
+    // Fix DEF-01 (QA julio 2026): usado por AuthService.login() para
+    // decidir si debe bloquear temporalmente la cuenta tras varios
+    // intentos fallidos consecutivos dentro de una ventana de tiempo.
+    @Transactional(readOnly = true)
+    public long contarFallidosRecientes(String email, LocalDateTime desde) {
+        return historialRepository.countByEmailUsadoAndExitosoFalseAndFechaHoraAfter(email, desde);
     }
 
     @Transactional(readOnly = true)

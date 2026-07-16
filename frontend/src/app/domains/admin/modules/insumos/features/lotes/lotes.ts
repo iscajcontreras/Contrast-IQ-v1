@@ -1,11 +1,12 @@
 import {
   Component,
+  PLATFORM_ID,
   TemplateRef,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { form, FormField, required, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,6 +20,7 @@ import { MatSelect } from '@angular/material/select';
 import { MatOption } from '@angular/material/autocomplete';
 import { MatChipsModule } from '@angular/material/chips';
 import { firstValueFrom, of } from 'rxjs';
+import { ssrSeguro } from '@/app/core/ssr/ssr-seguro';
 import {
   LotesApiService,
   Lote,
@@ -244,6 +246,7 @@ import {
 })
 export default class LotesContraste {
   private api = inject(LotesApiService);
+  private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
   private matDialog = inject(MatDialog);
   dialogRef: MatDialogRef<unknown> | null = null;
 
@@ -258,8 +261,8 @@ export default class LotesContraste {
   pageSize = signal(20);
 
   // --- Catalogos ---
-  sedes = rxResource({ stream: () => this.api.getSedes() });
-  agentes = rxResource({ stream: () => this.api.getAgentes() });
+  sedes = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.getSedes(), []) });
+  agentes = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.getAgentes(), []) });
 
   // --- Listado ---
   lotes = rxResource({
@@ -270,7 +273,8 @@ export default class LotesContraste {
       page: this.pageIndex(),
       size: this.pageSize(),
     }),
-    stream: ({ params }) => this.api.buscar(params),
+    stream: ({ params }) =>
+      ssrSeguro(this.esNavegador, () => this.api.buscar(params), { content: [], totalElements: 0 }),
   });
 
   // --- Dialog: crear ---
@@ -323,7 +327,7 @@ export default class LotesContraste {
   protected loteSeleccionado = signal<Lote | null>(null);
   protected trazabilidad = rxResource<TrazabilidadLote[], number | null>({
     params: () => this.loteSeleccionado()?.id ?? null,
-    stream: ({ params }) => (params ? this.api.trazabilidad(params) : of([])),
+    stream: ({ params }) => (params ? ssrSeguro(this.esNavegador, () => this.api.trazabilidad(params), []) : of([])),
   });
 
   abrirTrazabilidad(lote: Lote) {

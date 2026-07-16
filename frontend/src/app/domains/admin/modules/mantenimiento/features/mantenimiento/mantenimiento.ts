@@ -1,6 +1,7 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
 import {
   Component,
+  PLATFORM_ID,
   TemplateRef,
   inject,
   signal,
@@ -17,6 +18,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatOption } from '@angular/material/autocomplete';
 import { MatSelect } from '@angular/material/select';
 import { firstValueFrom } from 'rxjs';
+import { ssrSeguro } from '@/app/core/ssr/ssr-seguro';
 import {
   MantenimientoApiService,
   TicketSoporte,
@@ -263,15 +265,16 @@ import {
 })
 export default class MantenimientoPredictivo {
   private api = inject(MantenimientoApiService);
+  private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
   private matDialog = inject(MatDialog);
   dialogRef: MatDialogRef<unknown> | null = null;
 
   private readonly dialogTicketTpl = viewChild.required<TemplateRef<unknown>>('dialogTicket');
 
-  protected predicciones = rxResource({ stream: () => this.api.predicciones() });
-  protected calibraciones = rxResource({ stream: () => this.api.calendarioCalibracion() });
-  protected tickets = rxResource({ stream: () => this.api.listarTickets() });
-  protected inyectores = rxResource({ stream: () => this.api.getInyectores() });
+  protected predicciones = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.predicciones(), []) });
+  protected calibraciones = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.calendarioCalibracion(), []) });
+  protected tickets = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.listarTickets(), []) });
+  protected inyectores = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.getInyectores(), []) });
 
   cambiarEstadoTicket(ticket: TicketSoporte, nuevoEstado: string) {
     this.api.actualizarTicket(ticket.id, { estado: nuevoEstado }).subscribe(() => this.tickets.reload());

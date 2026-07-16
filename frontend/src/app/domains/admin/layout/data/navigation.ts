@@ -71,6 +71,13 @@ export const NAVIGATION: NavigationItem[] = [
         route: '/admin/insumos/pedidos',
         moduloCodigo: 'INSUMOS_PEDIDOS',
       },
+      {
+        id: 'insumos/mermas',
+        label: 'Merma de insumos',
+        icon: 'trending-down',
+        route: '/admin/insumos/mermas',
+        moduloCodigo: 'INSUMOS_MERMAS',
+      },
     ],
   },
   {

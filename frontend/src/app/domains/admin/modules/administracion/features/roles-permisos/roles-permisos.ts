@@ -1,10 +1,12 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatCard } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { firstValueFrom, of } from 'rxjs';
+import { ssrSeguro } from '@/app/core/ssr/ssr-seguro';
 import {
   AdministracionApiService,
   MatrizCelda,
@@ -102,21 +104,22 @@ import {
 })
 export default class RolesPermisos {
   private api = inject(AdministracionApiService);
+  private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
 
   protected rolSeleccionado = signal<number | null>(null);
   protected guardando = signal(false);
   protected error = signal<string | null>(null);
 
   protected roles = rxResource({
-    stream: () => this.api.getRoles(),
+    stream: () => ssrSeguro(this.esNavegador, () => this.api.getRoles(), []),
   });
 
-  protected modulos = rxResource({ stream: () => this.api.getModulos() });
-  protected permisos = rxResource({ stream: () => this.api.getPermisos() });
+  protected modulos = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.getModulos(), []) });
+  protected permisos = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.getPermisos(), []) });
 
   protected matriz = rxResource({
     params: () => this.rolSeleccionado(),
-    stream: ({ params }) => (params ? this.api.getMatriz(params) : of([])),
+    stream: ({ params }) => (params ? ssrSeguro(this.esNavegador, () => this.api.getMatriz(params), []) : of([])),
   });
 
   protected esRolAdmin = computed(

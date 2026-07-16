@@ -1,12 +1,13 @@
 import {
   Component,
+  PLATFORM_ID,
   TemplateRef,
   computed,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { form, FormField, required, email, submit, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,6 +21,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSelect } from '@angular/material/select';
 import { MatOption } from '@angular/material/autocomplete';
 import { firstValueFrom, of } from 'rxjs';
+import { ssrSeguro } from '@/app/core/ssr/ssr-seguro';
 import {
   UsuariosApiService,
   UsuarioResumen,
@@ -283,6 +285,7 @@ import {
 })
 export default class GestionUsuarios {
   private api = inject(UsuariosApiService);
+  private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
   private matDialog = inject(MatDialog);
   dialogRef: MatDialogRef<unknown> | null = null;
 
@@ -298,8 +301,8 @@ export default class GestionUsuarios {
   pageSize = signal(20);
 
   // --- Catalogos ---
-  sedes = rxResource({ stream: () => this.api.getSedes() });
-  roles = rxResource({ stream: () => this.api.getRoles() });
+  sedes = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.getSedes(), []) });
+  roles = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.getRoles(), []) });
 
   // --- Listado ---
   usuarios = rxResource({
@@ -311,7 +314,12 @@ export default class GestionUsuarios {
       page: this.pageIndex(),
       size: this.pageSize(),
     }),
-    stream: ({ params }) => this.api.buscar(params),
+    stream: ({ params }) =>
+      ssrSeguro(
+        this.esNavegador,
+        () => this.api.buscar(params),
+        { content: [], totalElements: 0, totalPages: 0, number: 0, size: 20 }
+      ),
   });
 
   // --- Dialog de alta/edicion ---
@@ -404,7 +412,10 @@ export default class GestionUsuarios {
   protected usuarioHistorial = signal<UsuarioResumen | null>(null);
   protected historialAccesos = rxResource({
     params: () => this.usuarioHistorial()?.id ?? null,
-    stream: ({ params }) => (params ? this.api.historialAccesos(params) : of({ content: [], totalElements: 0 })),
+    stream: ({ params }) =>
+      params
+        ? ssrSeguro(this.esNavegador, () => this.api.historialAccesos(params), { content: [], totalElements: 0 })
+        : of({ content: [], totalElements: 0 }),
   });
 
   abrirHistorialAccesos(usuario: UsuarioResumen) {

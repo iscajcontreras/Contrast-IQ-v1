@@ -1,5 +1,5 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { DatePipe, DecimalPipe, isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, computed, inject } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
@@ -18,6 +18,7 @@ import {
   ChartComponent,
 } from 'ng-apexcharts';
 import { Theming } from '@/app/core/theming';
+import { ssrSeguro } from '@/app/core/ssr/ssr-seguro';
 import { InyeccionDetalleApiService } from '@/app/domains/admin/modules/pacientes/data/inyeccion-detalle-api.service';
 
 @Component({
@@ -366,6 +367,7 @@ import { InyeccionDetalleApiService } from '@/app/domains/admin/modules/paciente
 })
 export default class InyeccionDetalle {
   private api = inject(InyeccionDetalleApiService);
+  private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
   private theming = inject(Theming);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -377,7 +379,67 @@ export default class InyeccionDetalle {
 
   protected detalle = rxResource({
     params: () => this.inyeccionId(),
-    stream: ({ params }) => this.api.obtenerDetalleCompleto(params),
+    stream: ({ params }) =>
+      ssrSeguro(
+        this.esNavegador,
+        () => this.api.obtenerDetalleCompleto(params),
+        {
+          inyeccionId: 0,
+          paciente: {
+            id: 0,
+            identificadorExterno: '',
+            nombreCompleto: null,
+            numeroExpediente: '',
+            sexo: '',
+            fechaNacimiento: null,
+            pesoKg: null,
+            tallaM: null,
+            grupoEtnico: null,
+            gfrMlMin: null,
+            creatininaMgDl: null,
+            alergias: null,
+          },
+          contraste: {
+            agentePrincipal: '',
+            concentracion: null,
+            fabricante: null,
+            numeroLote: null,
+            loteFechaCaducidad: null,
+            dosisContrasteGl: null,
+            volumenTotalMl: 0,
+          },
+          metadatos: {
+            fechaHoraInicio: '',
+            fechaHoraFin: null,
+            duracionSeg: null,
+            sede: '',
+            sala: '',
+            inyector: '',
+            operador: '',
+            protocolo: '',
+            identificadorAnatomico: '',
+            estado: '',
+            numeroAccesion: null,
+            procedimientoProgramado: null,
+            calibreAguja: null,
+            accesoAguja: null,
+            avanceSalinaMl: null,
+            salinaJumpUsado: null,
+            scanner: null,
+            notas: null,
+            retrasoEscaneoSeg: null,
+            presionMaximaPsi: null,
+            presionPromedioPsi: null,
+            presionLimitePsi: null,
+            edaHabilitado: false,
+            ctdiVolMgy: null,
+            dlpMgyCm: null,
+          },
+          seriePresion: [],
+          serieFlujo: [],
+          comparativoFases: [],
+        }
+      ),
   });
 
   protected edad = computed(() => {

@@ -13,9 +13,12 @@ import com.contrastiq.backend.repository.EventoExtravasacionRepository;
 import com.contrastiq.backend.repository.InyeccionRepository;
 import com.contrastiq.backend.repository.PacienteRepository;
 import com.contrastiq.backend.repository.spec.PacienteSpecification;
+import com.contrastiq.backend.security.UsuarioAutenticadoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +36,7 @@ public class PacienteService {
     private final PacienteRepository pacienteRepository;
     private final InyeccionRepository inyeccionRepository;
     private final EventoExtravasacionRepository eventoExtravasacionRepository;
+    private final UsuarioAutenticadoService usuarioAutenticadoService;
 
     // Umbral clinico habitual para precaucion con contraste yodado
     // (nefropatia inducida por contraste). Esto es una simplificacion
@@ -41,12 +45,36 @@ public class PacienteService {
 
     @Transactional(readOnly = true)
     public Page<PacienteResumenDTO> buscar(String busqueda, Pageable pageable) {
-        return pacienteRepository.findAll(PacienteSpecification.conBusqueda(busqueda), pageable)
+        // Fix DEF-03 (QA julio 2026): un usuario restringido a una sede
+        // solo debe ver, en la busqueda, pacientes con al menos una
+        // inyeccion registrada en su propia sede.
+        Long restriccion = usuarioAutenticadoService.sedeIdRestriccion();
+        Specification<Paciente> spec = PacienteSpecification.conBusqueda(busqueda)
+                .and(PacienteSpecification.conSedeRestriccion(restriccion));
+        return pacienteRepository.findAll(spec, pageable)
                 .map(this::aResumen);
+    }
+
+    // Fix DEF-03 (QA julio 2026): valida que el usuario actual tenga
+    // acceso a este paciente (sin restriccion, o con al menos una
+    // inyeccion del paciente en su propia sede) antes de exponer
+    // cualquier dato clinico suyo. Se llama al inicio de los 3 metodos
+    // de detalle -- si esto no se hiciera, un usuario podia saltarse el
+    // filtro de conSedeRestriccion() de buscar() con solo conocer el ID.
+    private void verificarAccesoAPaciente(Long pacienteId) {
+        Long restriccion = usuarioAutenticadoService.sedeIdRestriccion();
+        if (restriccion == null) {
+            return;
+        }
+        boolean tieneAcceso = inyeccionRepository.existsByPaciente_IdAndInyector_Sala_Sede_Id(pacienteId, restriccion);
+        if (!tieneAcceso) {
+            throw new AccessDeniedException("No tienes acceso a la informacion de este paciente");
+        }
     }
 
     @Transactional(readOnly = true)
     public PacienteDetalleDTO obtenerDetalle(Long id) {
+        verificarAccesoAPaciente(id);
         Paciente paciente = pacienteRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("El paciente no existe"));
 
@@ -79,6 +107,7 @@ public class PacienteService {
 
     @Transactional(readOnly = true)
     public List<HistorialInyeccionPacienteDTO> historialInyecciones(Long id) {
+        verificarAccesoAPaciente(id);
         List<Inyeccion> inyecciones = inyeccionRepository.findByPaciente_IdOrderByFechaHoraInicioDesc(id);
 
         return inyecciones.stream().map(i -> {
@@ -115,6 +144,7 @@ public class PacienteService {
     // "Historial de reacciones por paciente" (Seguridad del paciente)
     @Transactional(readOnly = true)
     public List<ReaccionPacienteDTO> reacciones(Long pacienteId) {
+        verificarAccesoAPaciente(pacienteId);
         return eventoExtravasacionRepository.findByInyeccion_Paciente_IdOrderByFechaHoraDesc(pacienteId).stream()
                 .map(this::aReaccionDto)
                 .toList();

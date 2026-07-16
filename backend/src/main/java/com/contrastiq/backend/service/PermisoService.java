@@ -5,6 +5,7 @@ import com.contrastiq.backend.dto.ModuloDTO;
 import com.contrastiq.backend.dto.PermisoDTO;
 import com.contrastiq.backend.dto.PermisoModuloDTO;
 import com.contrastiq.backend.dto.RolDTO;
+import com.contrastiq.backend.model.Auditoria;
 import com.contrastiq.backend.model.Modulo;
 import com.contrastiq.backend.model.Permiso;
 import com.contrastiq.backend.model.Rol;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 // Pantalla "Roles y permisos" del modulo de administracion: consulta y
 // edicion (checkbox por checkbox, sin boton "Guardar") de la matriz
@@ -41,6 +43,7 @@ public class PermisoService {
     private final RolRepository rolRepository;
     private final RolModuloPermisoRepository rolModuloPermisoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final AuditoriaService auditoriaService;
 
     @Transactional(readOnly = true)
     public List<ModuloDTO> listarModulos() {
@@ -105,6 +108,12 @@ public class PermisoService {
                 .permiso(permiso)
                 .build();
         rolModuloPermisoRepository.save(rmp);
+
+        // Fix DEF-02 (QA julio 2026): otorgar/revocar permisos cambia
+        // quien puede ver que en todo el sistema -- exactamente el tipo
+        // de accion que la tabla auditoria fue disenada para trazar.
+        auditoriaService.registrar("rol_modulo_permiso", rolId, Auditoria.Accion.CREAR,
+                Map.of("rol", rol.getNombre().name(), "modulo", modulo.getCodigo(), "permiso", permiso.getCodigo()));
     }
 
     @Transactional
@@ -119,7 +128,15 @@ public class PermisoService {
         if (rol.getNombre() == NombreRol.ADMIN) {
             throw new IllegalArgumentException("No se le pueden revocar permisos al rol ADMIN");
         }
+        Modulo modulo = moduloRepository.findById(moduloId)
+                .orElseThrow(() -> new IllegalArgumentException("El modulo no existe"));
+        Permiso permiso = permisoRepository.findById(permisoId)
+                .orElseThrow(() -> new IllegalArgumentException("El permiso no existe"));
+
         rolModuloPermisoRepository.deleteByRol_IdAndModulo_IdAndPermiso_Id(rolId, moduloId, permisoId);
+
+        auditoriaService.registrar("rol_modulo_permiso", rolId, Auditoria.Accion.ELIMINAR,
+                Map.of("rol", rol.getNombre().name(), "modulo", modulo.getCodigo(), "permiso", permiso.getCodigo()));
     }
 
     // Consumido por /api/me/permisos -- cualquier usuario autenticado ve

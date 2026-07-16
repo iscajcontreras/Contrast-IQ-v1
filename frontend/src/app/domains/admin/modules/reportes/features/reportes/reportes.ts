@@ -1,11 +1,12 @@
-import { DecimalPipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { DecimalPipe, isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCard } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { ssrSeguro } from '@/app/core/ssr/ssr-seguro';
 import { ReportesApiService } from '@/app/domains/admin/modules/reportes/data/reportes-api.service';
 
 function formatoISO(fecha: Date): string {
@@ -103,6 +104,7 @@ function formatoISO(fecha: Date): string {
 })
 export default class ReportesEjecutivos {
   private api = inject(ReportesApiService);
+  private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
 
   protected desde = signal(formatoISO(new Date(new Date().setDate(new Date().getDate() - 29))));
   protected hasta = signal(formatoISO(new Date()));
@@ -111,7 +113,11 @@ export default class ReportesEjecutivos {
   protected comparativa = rxResource({
     params: () => ({ desde: this.desde(), hasta: this.hasta() }),
     stream: ({ params }) =>
-      this.api.comparativaSedes(`${params.desde}T00:00:00`, `${params.hasta}T23:59:59`),
+      ssrSeguro(
+        this.esNavegador,
+        () => this.api.comparativaSedes(`${params.desde}T00:00:00`, `${params.hasta}T23:59:59`),
+        []
+      ),
   });
 
   exportarExcel() {

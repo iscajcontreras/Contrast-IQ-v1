@@ -72,9 +72,27 @@ export class AuthService {
   constructor() {
     // Si ya habia un token valido guardado (ej. recargaste la pagina),
     // trae el perfil real en vez de dejar el menu de usuario vacio.
+    //
+    // BUGFIX: estas llamadas NO pueden dispararse de forma sincrona aqui
+    // dentro del constructor. http.get(...) pasa por authInterceptor, que
+    // hace inject(AuthService) -- pero mientras este constructor sigue
+    // corriendo, Angular todavia tiene el provider de AuthService
+    // marcado como "en construccion", asi que ese inject() anidado
+    // revienta con NG0200 (Circular dependency detected for
+    // `_AuthService`). cargarPerfil() tiene el mismo problema pero su
+    // propio try/catch se tragaba el error en silencio (por eso el
+    // perfil nunca cargaba sin ningun error visible); la llamada a
+    // permisosService si lo dejaba ver.
+    //
+    // queueMicrotask() difiere ambas llamadas a justo despues de que
+    // este constructor termine -- para ese momento AuthService ya quedo
+    // registrado como instancia completa, y el inject(AuthService) del
+    // interceptor deja de ser circular.
     if (this.esNavegador && this.estaAutenticado()) {
-      this.cargarPerfil();
-      this.permisosService.asegurarCargado().subscribe();
+      queueMicrotask(() => {
+        this.cargarPerfil();
+        this.permisosService.asegurarCargado().subscribe();
+      });
     }
   }
 

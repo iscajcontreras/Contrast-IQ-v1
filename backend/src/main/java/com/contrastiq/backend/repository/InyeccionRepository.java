@@ -73,4 +73,10 @@ public interface InyeccionRepository
     @Query("select count(e) from EventoExtravasacion e where e.inyeccion.paciente.id = :pacienteId " +
            "and e.estadoEda = com.contrastiq.backend.model.enums.EstadoEda.FUERA_DE_RANGO")
     long contarEdaFueraDeRangoPorPaciente(@Param("pacienteId") Long pacienteId);
+
+    // Fix DEF-03 (QA julio 2026): confirma si un paciente tiene al menos
+    // una inyeccion en una sede dada -- usado por PacienteService para
+    // decidir si un usuario restringido a esa sede puede ver el
+    // detalle/historial/reacciones de ese paciente.
+    boolean existsByPaciente_IdAndInyector_Sala_Sede_Id(Long pacienteId, Long sedeId);
 }

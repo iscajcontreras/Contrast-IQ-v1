@@ -1,10 +1,11 @@
-import { DatePipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
+import { Component, PLATFORM_ID, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatCard } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelect } from '@angular/material/select';
 import { MatOption } from '@angular/material/autocomplete';
+import { ssrSeguro } from '@/app/core/ssr/ssr-seguro';
 import {
   LotesApiService,
   PedidoReabastecimiento,
@@ -80,8 +81,9 @@ import {
 })
 export default class PedidosReabastecimiento {
   private api = inject(LotesApiService);
+  private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
 
-  protected pedidos = rxResource({ stream: () => this.api.listarPedidos() });
+  protected pedidos = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.listarPedidos(), []) });
 
   cambiarEstado(pedido: PedidoReabastecimiento, nuevoEstado: string) {
     this.api.actualizarPedido(pedido.id, nuevoEstado).subscribe(() => this.pedidos.reload());

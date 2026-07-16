@@ -57,6 +57,12 @@ public class Usuario {
     @Builder.Default
     private Boolean activo = true;
 
+    // Fix DEF-01 (QA julio 2026): si no es null y es futuro, la cuenta
+    // esta temporalmente bloqueada por intentos de login fallidos
+    // consecutivos (ver AuthService.login()).
+    @Column(name = "bloqueado_hasta")
+    private LocalDateTime bloqueadoHasta;
+
     @Column(name = "creado_en", nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime creadoEn = LocalDateTime.now();

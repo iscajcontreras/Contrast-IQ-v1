@@ -1,6 +1,7 @@
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject, signal } from '@angular/core';
-import { Observable, map, shareReplay, tap } from 'rxjs';
+import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
+import { Observable, map, of, shareReplay, tap } from 'rxjs';
 import { environment } from '@/environments/environment';
 
 interface PermisoModulo {
@@ -17,11 +18,24 @@ interface PermisoModulo {
 @Injectable({ providedIn: 'root' })
 export class PermisosService {
   private http = inject(HttpClient);
+  private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
 
   private permisos = signal<Set<string>>(new Set());
   private cargado$: Observable<Set<string>> | null = null;
 
   asegurarCargado(): Observable<Set<string>> {
+    // BUGFIX (mismo patron que auth.guard.ts, ver SolucionLogin.md): en
+    // el servidor (SSR) no existe localStorage, asi que AuthService no
+    // tiene ningun access_token que mandar -- una peticion a
+    // /api/me/permisos ahi siempre responde 401, y ese 401 sin manejar
+    // tumbaba el render SSR entero (uncaughtException) en CADA pagina,
+    // porque este servicio se usa desde el layout/menu, que carga en
+    // toda ruta /admin/**. En el servidor simplemente no hay permisos
+    // que cargar; el cliente los pedira de verdad una vez hidratado.
+    if (!this.esNavegador) {
+      return of(new Set<string>());
+    }
+
     if (this.permisos().size > 0) {
       return new Observable((subscriber) => {
         subscriber.next(this.permisos());

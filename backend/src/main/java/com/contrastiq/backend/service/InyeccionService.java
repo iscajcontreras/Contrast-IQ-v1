@@ -18,9 +18,11 @@ import com.contrastiq.backend.repository.InyeccionSeriePresionRepository;
 import com.contrastiq.backend.repository.InyeccionSerieFlujoRepository;
 import com.contrastiq.backend.repository.ProtocoloFaseRepository;
 import com.contrastiq.backend.repository.spec.InyeccionSpecification;
+import com.contrastiq.backend.security.UsuarioAutenticadoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,12 +40,20 @@ public class InyeccionService {
     private final InyeccionSerieFlujoRepository serieFlujoRepository;
     private final InyeccionFaseProgramadaRepository faseProgramadaRepository;
     private final ProtocoloFaseRepository protocoloFaseRepository;
+    private final UsuarioAutenticadoService usuarioAutenticadoService;
 
     // Usado por GET /api/inyecciones : lista paginada que respeta TODOS los
     // filtros de la barra del dashboard (fecha, sala, inyector, protocolo,
     // identificador anatomico, agente, estado, solo-alertas-eda).
     @Transactional(readOnly = true)
     public Page<InyeccionResumenDTO> buscar(FiltroInyeccionDTO filtro, Pageable pageable) {
+        // Fix DEF-03 (QA julio 2026): un usuario restringido a una sede no
+        // puede pedir la de otra por query param -- se ignora lo que mande
+        // el frontend y se fuerza su propia sede.
+        Long restriccion = usuarioAutenticadoService.sedeIdRestriccion();
+        if (restriccion != null) {
+            filtro.setSedeId(restriccion);
+        }
         Page<Inyeccion> pagina = inyeccionRepository.findAll(
                 InyeccionSpecification.conFiltros(filtro), pageable);
         return pagina.map(this::aResumen);
@@ -67,6 +77,7 @@ public class InyeccionService {
     public InyeccionResumenDTO actualizarDosisRadiacion(Long inyeccionId, ActualizarDosisRadiacionRequest request) {
         Inyeccion i = inyeccionRepository.findById(inyeccionId)
                 .orElseThrow(() -> new IllegalArgumentException("La inyeccion no existe"));
+        verificarAccesoASede(i);
         i.setCtdiVolMgy(request.getCtdiVolMgy());
         i.setDlpMgyCm(request.getDlpMgyCm());
         return aResumen(inyeccionRepository.save(i));
@@ -80,6 +91,7 @@ public class InyeccionService {
     public InyeccionDetalleCompletoResponse obtenerDetalleCompleto(Long inyeccionId) {
         Inyeccion i = inyeccionRepository.findById(inyeccionId)
                 .orElseThrow(() -> new IllegalArgumentException("La inyeccion no existe"));
+        verificarAccesoASede(i);
 
         List<PuntoPresionDTO> seriePresion = seriePresionRepository
                 .findByInyeccion_IdOrderByTiempoSegAsc(inyeccionId).stream()
@@ -107,6 +119,22 @@ public class InyeccionService {
                 .serieFlujo(serieFlujo)
                 .comparativoFases(aComparativoFases(i))
                 .build();
+    }
+
+    // Fix DEF-03 (QA julio 2026): acceso a una inyeccion especifica por ID
+    // directo (detalle completo, actualizar dosis de radiacion) debe
+    // respetar la misma restriccion de sede que la busqueda paginada --
+    // si no, un usuario restringido podia saltarse el filtro solo
+    // conociendo el ID de una inyeccion de otra sede.
+    private void verificarAccesoASede(Inyeccion i) {
+        Long restriccion = usuarioAutenticadoService.sedeIdRestriccion();
+        if (restriccion == null) {
+            return;
+        }
+        Long sedeInyeccion = i.getInyector().getSala().getSede().getId();
+        if (!restriccion.equals(sedeInyeccion)) {
+            throw new AccessDeniedException("No tienes acceso a esta inyeccion de otra sede");
+        }
     }
 
     private InyeccionDetalleCompletoResponse.PacienteInfoDTO aPacienteInfo(Paciente p) {

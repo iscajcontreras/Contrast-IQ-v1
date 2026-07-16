@@ -101,3 +101,80 @@ export class LotesApiService {
     return this.http.get<TrazabilidadLote[]>(`${this.base}/${loteId}/trazabilidad`);
   }
 }
+
+// Merma de insumos (contraste + solucion salina): volumen programado vs.
+// realmente inyectado por fase (inyeccion_fases), agregado en las 4
+// vistas pedidas por el stakeholder -- ver MermaController en el
+// backend, que es la fuente de verdad de estos tipos.
+export interface MermaResumen {
+  volumenProgramadoMl: number;
+  volumenRealMl: number;
+  volumenMermaMl: number;
+  porcentajeMerma: number;
+  volumenMermaPeriodoAnteriorMl: number | null;
+  variacionPorcentual: number | null;
+}
+
+export interface MermaPorSede {
+  sedeId: number;
+  sede: string;
+  volumenProgramadoMl: number;
+  volumenRealMl: number;
+  volumenMermaMl: number;
+  porcentajeMerma: number;
+}
+
+export interface MermaPorInsumo {
+  agenteId: number;
+  nombreComercial: string;
+  tipo: 'CONTRASTE' | 'SOLUCION_SALINA';
+  fabricante: string | null;
+  volumenProgramadoMl: number;
+  volumenRealMl: number;
+  volumenMermaMl: number;
+  porcentajeMerma: number;
+}
+
+export interface MermaInyeccion {
+  inyeccionId: number;
+  fechaHoraInicio: string;
+  paciente: string | null;
+  numeroExpediente: string | null;
+  sede: string;
+  sala: string;
+  estado: string;
+  motivoAborto: string | null;
+  volumenProgramadoMl: number;
+  volumenRealMl: number;
+  volumenMermaMl: number;
+  porcentajeMerma: number;
+}
+
+export interface PaginaMermaInyeccion {
+  content: MermaInyeccion[];
+  totalElements: number;
+}
+
+@Injectable({ providedIn: 'root' })
+export class MermasApiService {
+  private http = inject(HttpClient);
+  private base = `${environment.apiBaseUrl}/insumos/mermas`;
+
+  resumen(desde: string, hasta: string): Observable<MermaResumen> {
+    return this.http.get<MermaResumen>(`${this.base}/resumen`, { params: { desde, hasta } });
+  }
+
+  porSede(desde: string, hasta: string): Observable<MermaPorSede[]> {
+    return this.http.get<MermaPorSede[]>(`${this.base}/por-sede`, { params: { desde, hasta } });
+  }
+
+  porInsumo(desde: string, hasta: string): Observable<MermaPorInsumo[]> {
+    return this.http.get<MermaPorInsumo[]>(`${this.base}/por-insumo`, { params: { desde, hasta } });
+  }
+
+  porInyeccion(desde: string, hasta: string, page: number, size: number): Observable<PaginaMermaInyeccion> {
+    return this.http.get<PaginaMermaInyeccion>(`${this.base}/por-inyeccion`, {
+      params: { desde, hasta, page: String(page), size: String(size) },
+    });
+  }
+}

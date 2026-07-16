@@ -14,6 +14,10 @@ const routes: Routes = [
     path: 'pedidos',
     loadComponent: () => import('./features/pedidos/pedidos'),
   },
+  {
+    path: 'mermas',
+    loadComponent: () => import('./features/mermas/mermas'),
+  },
 ];
 
 export default routes;
