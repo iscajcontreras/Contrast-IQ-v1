@@ -1,0 +1,163 @@
+{
+  "_nota": "Datos SINTETICOS para pruebas, nunca reales. Nombres/campos verificados contra src/main/java/com/contrastiq/backend/model/*.java y dto/*.java. Ningun paciente/usuario aqui corresponde a una persona real.",
+
+  "usuarios_por_rol": [
+    { "rol": "ADMIN", "nombreCompleto": "QA Admin Uno", "email": "qa.admin.uno@contrastiq-demo.mx", "password": "password", "sedeId": null, "nota": "ADMIN puede no tener sede asignada (campo sedeId es opcional en CrearUsuarioRequest)." },
+    { "rol": "TECNICO", "nombreCompleto": "QA Tecnico Uno", "email": "qa.tecnico.uno@contrastiq-demo.mx", "password": "password", "sedeId": 1 },
+    { "rol": "RADIOLOGO", "nombreCompleto": "QA Radiologo Uno", "email": "qa.radiologo.uno@contrastiq-demo.mx", "password": "password", "sedeId": 1 },
+    { "rol": "BIOMEDICA", "nombreCompleto": "QA Biomedica Uno", "email": "qa.biomedica.uno@contrastiq-demo.mx", "password": "password", "sedeId": 1 },
+    { "rol": "VISUALIZADOR", "nombreCompleto": "QA Visualizador Uno", "email": "qa.visualizador.uno@contrastiq-demo.mx", "password": "password", "sedeId": 2, "nota": "Sede distinta a proposito, para casos de prueba de aislamiento por sede (DEF-03) contra usuarios de sede 1." }
+  ],
+
+  "pacientes_validos": [
+    {
+      "identificadorExterno": "MRN-QA-0001",
+      "nombreCompleto": "Paciente Prueba Uno",
+      "sexo": "M",
+      "pesoKg": 78.5,
+      "gfrMlMin": 92.0,
+      "creatininaMgDl": 0.9,
+      "alergias": "Ninguna conocida",
+      "numeroExpediente": "EXP-QA-0001",
+      "fechaNacimiento": "1985-03-14",
+      "tallaM": 1.75,
+      "grupoEtnico": "No especificado"
+    },
+    {
+      "identificadorExterno": "MRN-QA-0002",
+      "nombreCompleto": "Paciente Prueba Dos",
+      "sexo": "F",
+      "pesoKg": 63.0,
+      "gfrMlMin": 88.5,
+      "creatininaMgDl": 0.8,
+      "alergias": "Alergia leve a yodo, sin reaccion grave previa",
+      "numeroExpediente": "EXP-QA-0002",
+      "fechaNacimiento": "1990-11-02",
+      "tallaM": 1.62,
+      "grupoEtnico": "No especificado"
+    }
+  ],
+
+  "pacientes_datos_limite": [
+    {
+      "descripcion": "GFR bajo (riesgo renal alto, umbral clinico tipico < 30 ml/min) -- para probar que ChecklistPreInyeccionController.gfrRevisado / riesgoRenalMomento reflejen el riesgo, y para casos de negocio en Merma/Dashboard que dependan de pacientes de alto riesgo.",
+      "identificadorExterno": "MRN-QA-0003",
+      "nombreCompleto": "Paciente Prueba GFR Bajo",
+      "sexo": "M",
+      "pesoKg": 70.0,
+      "gfrMlMin": 22.0,
+      "creatininaMgDl": 3.4,
+      "alergias": "Ninguna conocida",
+      "numeroExpediente": "EXP-QA-0003",
+      "fechaNacimiento": "1955-06-20",
+      "tallaM": 1.70,
+      "grupoEtnico": "No especificado"
+    },
+    {
+      "descripcion": "Edad pediatrica -- el modelo Paciente SI tiene fechaNacimiento (confirmado en model/Paciente.java), por lo que este caso es real y no inventado.",
+      "identificadorExterno": "MRN-QA-0004",
+      "nombreCompleto": "Paciente Prueba Pediatrico",
+      "sexo": "F",
+      "pesoKg": 22.0,
+      "gfrMlMin": 110.0,
+      "creatininaMgDl": 0.4,
+      "alergias": "Ninguna conocida",
+      "numeroExpediente": "EXP-QA-0004",
+      "fechaNacimiento": "2019-01-10",
+      "tallaM": 1.10,
+      "grupoEtnico": "No especificado"
+    },
+    {
+      "descripcion": "Alergia grave declarada -- para validar que checklist.alergiasMomento capture el texto y que la revision clinica sea obligatoria (@AssertTrue alergiasRevisadas).",
+      "identificadorExterno": "MRN-QA-0005",
+      "nombreCompleto": "Paciente Prueba Alergia Grave",
+      "sexo": "OTRO",
+      "pesoKg": 81.0,
+      "gfrMlMin": 75.0,
+      "creatininaMgDl": 1.1,
+      "alergias": "Reaccion anafilactica previa a medio de contraste yodado",
+      "numeroExpediente": "EXP-QA-0005",
+      "fechaNacimiento": "1978-09-30",
+      "tallaM": 1.80,
+      "grupoEtnico": "No especificado"
+    }
+  ],
+
+  "lotes_vigentes": [
+    { "numeroLote": "QA-LOTE-VIG-001", "agenteNombreComercialSugerido": "Omnipaque 350", "sedeId": 1, "fechaCaducidad": "2027-12-31", "cantidadMl": 500.00 },
+    { "numeroLote": "QA-LOTE-VIG-002", "agenteNombreComercialSugerido": "Visipaque 320", "sedeId": 1, "fechaCaducidad": "2027-06-30", "cantidadMl": 500.00 },
+    { "numeroLote": "QA-LOTE-PROXCADUCAR-001", "agenteNombreComercialSugerido": "Omnipaque 350", "sedeId": 1, "fechaCaducidad": "PLUS_15_DIAS_DESDE_HOY", "cantidadMl": 250.00, "nota": "Fecha calculada en tiempo de ejecucion (hoy + 15 dias) para caer dentro del rango 'proximo a caducar' (CURDATE() y CURDATE()+30 dias segun All_Sql_Statement.MD)." }
+  ],
+  "lotes_caducados": [
+    {
+      "numeroLote": "QA-LOTE-CADUCADO-001",
+      "agenteNombreComercialSugerido": "Omnipaque 350",
+      "sedeId": 1,
+      "fechaCaducidad": "2020-01-01",
+      "cantidadMl": 500.00,
+      "nota": "CrearLoteRequest.fechaCaducidad tiene @Future, por lo que ESTE lote NO puede darse de alta via POST /api/lotes con esta fecha -- se usa unicamente como dato de referencia para pruebas de LECTURA (filtro soloVigentes=false / listados que ya tengan lotes caducados precargados en el seed de la base), no como body valido de creacion. El caso negativo 'fecha de caducidad en el pasado -> 400' de la coleccion usa este mismo valor a proposito para confirmar el rechazo de @Future."
+    }
+  ],
+
+  "agentes_contraste": [
+    { "nombreComercial": "Omnipaque 350", "concentracion": "350 mg I/mL", "fabricante": "GE Healthcare", "tipo": "CONTRASTE", "activo": true },
+    { "nombreComercial": "Visipaque 320", "concentracion": "320 mg I/mL", "fabricante": "GE Healthcare", "tipo": "CONTRASTE", "activo": true },
+    { "nombreComercial": "Solucion Salina 0.9%", "concentracion": "0.9%", "fabricante": "Pisa Farmaceutica", "tipo": "SOLUCION_SALINA", "activo": true, "nota": "TipoAgente confirmado en model/enums/TipoAgente.java; verifica el nombre exacto del valor SOLUCION_SALINA (u homologo) en tu copia del enum antes de usarlo literal en un body." }
+  ],
+
+  "protocolos": [
+    { "nombre": "TC Abdomen Contrastado", "identificadorAnatomicoSugerido": "ABDOMEN", "activo": true },
+    { "nombre": "TC Torax Contrastado", "identificadorAnatomicoSugerido": "TORAX", "activo": true }
+  ],
+
+  "checklists_validos": [
+    {
+      "descripcion": "Checklist completo, todas las banderas de seguridad en true -- debe crear 201.",
+      "pacienteId": "{{pacienteId}}",
+      "salaId": "{{salaId}}",
+      "identidadVerificada": true,
+      "gfrRevisado": true,
+      "gfrValorMomento": 92.0,
+      "alergiasRevisadas": true,
+      "alergiasMomento": "Ninguna conocida",
+      "consentimientoFirmado": true,
+      "observaciones": "Paciente cooperador, sin incidencias previas.",
+      "firmaNombre": "QA Tecnico Uno",
+      "firmaImagenBase64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    },
+    {
+      "descripcion": "Checklist sin salaId (campo opcional segun CrearChecklistRequest -- no tiene @NotNull) -- debe crear 201.",
+      "pacienteId": "{{pacienteId}}",
+      "identidadVerificada": true,
+      "gfrRevisado": true,
+      "gfrValorMomento": 88.5,
+      "alergiasRevisadas": true,
+      "alergiasMomento": "Alergia leve a yodo",
+      "consentimientoFirmado": true,
+      "observaciones": "",
+      "firmaNombre": "QA Radiologo Uno",
+      "firmaImagenBase64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    }
+  ],
+
+  "checklists_invalidos": [
+    { "descripcion": "identidadVerificada=false -> 400 por @AssertTrue", "pacienteId": "{{pacienteId}}", "identidadVerificada": false, "gfrRevisado": true, "alergiasRevisadas": true, "consentimientoFirmado": true, "firmaNombre": "QA Tecnico Uno", "firmaImagenBase64": "data:image/png;base64,AAAA" },
+    { "descripcion": "gfrRevisado=false -> 400 por @AssertTrue", "pacienteId": "{{pacienteId}}", "identidadVerificada": true, "gfrRevisado": false, "alergiasRevisadas": true, "consentimientoFirmado": true, "firmaNombre": "QA Tecnico Uno", "firmaImagenBase64": "data:image/png;base64,AAAA" },
+    { "descripcion": "alergiasRevisadas=false -> 400 por @AssertTrue", "pacienteId": "{{pacienteId}}", "identidadVerificada": true, "gfrRevisado": true, "alergiasRevisadas": false, "consentimientoFirmado": true, "firmaNombre": "QA Tecnico Uno", "firmaImagenBase64": "data:image/png;base64,AAAA" },
+    { "descripcion": "consentimientoFirmado=false -> 400 por @AssertTrue", "pacienteId": "{{pacienteId}}", "identidadVerificada": true, "gfrRevisado": true, "alergiasRevisadas": true, "consentimientoFirmado": false, "firmaNombre": "QA Tecnico Uno", "firmaImagenBase64": "data:image/png;base64,AAAA" },
+    { "descripcion": "pacienteId ausente -> 400 por @NotNull", "identidadVerificada": true, "gfrRevisado": true, "alergiasRevisadas": true, "consentimientoFirmado": true, "firmaNombre": "QA Tecnico Uno", "firmaImagenBase64": "data:image/png;base64,AAAA" },
+    { "descripcion": "firmaNombre y firmaImagenBase64 vacios -> 400 por @NotBlank", "pacienteId": "{{pacienteId}}", "identidadVerificada": true, "gfrRevisado": true, "alergiasRevisadas": true, "consentimientoFirmado": true, "firmaNombre": "", "firmaImagenBase64": "" }
+  ],
+
+  "usuarios_invalidos": [
+    { "descripcion": "email con formato invalido -> 400 @Email", "nombreCompleto": "QA Invalido Uno", "email": "no-es-un-email", "password": "password123", "rolId": "{{rolId}}", "sedeId": "{{sedeId}}" },
+    { "descripcion": "password menor a 8 caracteres -> 400 @Size(min=8)", "nombreCompleto": "QA Invalido Dos", "email": "qa.invalido.dos@contrastiq-demo.mx", "password": "abc123", "rolId": "{{rolId}}", "sedeId": "{{sedeId}}" },
+    { "descripcion": "rolId ausente -> 400 @NotNull", "nombreCompleto": "QA Invalido Tres", "email": "qa.invalido.tres@contrastiq-demo.mx", "password": "password123", "sedeId": "{{sedeId}}" }
+  ],
+
+  "notas_generales": [
+    "Todos los emails de prueba usan el dominio ficticio contrastiq-demo.mx, igual que el seed real documentado en BackEnd_ContrastIQ/USUARIOS_DATOS_PRUEBA.md, para no confundirlos con datos productivos.",
+    "Los valores '{{pacienteId}}', '{{salaId}}', '{{rolId}}', '{{sedeId}}' deben resolverse en tiempo de ejecucion contra el entorno activo (ver ContrastIQ_Local.postman_environment.json) -- este archivo es data estatica de referencia, no substituye las variables de entorno.",
+    "No existen pacientes 'lote' o 'checklist' con datos reales de hospitales: cualquier coincidencia de nombre con una persona real es involuntaria y debe reportarse para reemplazar el dato."
+  ]
+}
