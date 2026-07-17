@@ -1,6 +1,8 @@
 import { DatePipe, DecimalPipe, isPlatformBrowser } from '@angular/common';
 import { Component, PLATFORM_ID, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
+import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { interval } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCard } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -114,10 +116,13 @@ function calcularRango(preset: Exclude<RangoPreset, 'personalizado'>): { desde: 
           </div>
         </div>
         <div class="flex-auto"></div>
-        <button matButton="outlined" (click)="recargarTodo()">
-          <mat-icon svgIcon="refresh-cw" />
-          Actualizar
-        </button>
+        <div class="flex flex-col items-end gap-y-1">
+          <button matButton="outlined" (click)="recargarTodo()">
+            <mat-icon svgIcon="refresh-cw" />
+            Actualizar
+          </button>
+          <span class="text-xs text-neutral-400">Se actualiza solo cada 60 segundos</span>
+        </div>
       </div>
 
       <!-- Barra de filtros: cuadricula compacta 2x3 -->
@@ -224,7 +229,7 @@ function calcularRango(preset: Exclude<RangoPreset, 'personalizado'>): { desde: 
 
 
       <!-- KPIs -->
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <mat-card
           class="p-4"
           appearance="outlined"
@@ -249,21 +254,58 @@ function calcularRango(preset: Exclude<RangoPreset, 'personalizado'>): { desde: 
         </mat-card>
 
         <mat-card
-          class="p-4"
+          class="cursor-pointer p-4 transition-colors hover:bg-neutral-50"
+          appearance="outlined"
+          role="button"
+          tabindex="0"
+          title="Ver detalle en Merma de insumos"
+          (click)="irAMermas()"
+          (keydown.enter)="irAMermas()"
+        >
+          <div class="flex items-center justify-between text-neutral-500">
+            Merma con estos filtros
+            <mat-icon svgIcon="arrow-up-right" class="size-4 text-neutral-400" />
+          </div>
+          <div class="mt-1 text-2xl font-semibold">
+            {{ mermaFiltrada.value()?.volumenMermaMl ?? 0 | number: '1.0-0' }} ml
+          </div>
+          <div class="text-sm text-neutral-500">
+            {{ mermaFiltrada.value()?.porcentajeMerma ?? 0 | number: '1.0-1' }}% de lo programado
+          </div>
+        </mat-card>
+
+        <mat-card
+          class="cursor-pointer p-4 transition-colors hover:bg-red-100"
           [class.bg-red-50]="(kpis.value()?.alertasEdaFueraDeRango ?? 0) > 0"
           appearance="outlined"
+          role="button"
+          tabindex="0"
+          title="Ver alertas de extravasacion"
+          (click)="irAExtravasaciones()"
+          (keydown.enter)="irAExtravasaciones()"
         >
-          <div class="text-neutral-500">Alertas de extravasacion</div>
+          <div class="flex items-center justify-between text-neutral-500">
+            Alertas de extravasacion
+            <mat-icon svgIcon="arrow-up-right" class="size-4 text-neutral-400" />
+          </div>
           <div class="mt-1 text-2xl font-semibold text-red-600">
             {{ kpis.value()?.alertasEdaFueraDeRango ?? 0 }}
           </div>
         </mat-card>
 
         <mat-card
-          class="p-4"
+          class="cursor-pointer p-4 transition-colors hover:bg-neutral-50"
           appearance="outlined"
+          role="button"
+          tabindex="0"
+          title="Ver mantenimiento predictivo de inyectores"
+          (click)="irAMantenimiento()"
+          (keydown.enter)="irAMantenimiento()"
         >
-          <div class="text-neutral-500">Inyectores activos</div>
+          <div class="flex items-center justify-between text-neutral-500">
+            Inyectores activos
+            <mat-icon svgIcon="arrow-up-right" class="size-4 text-neutral-400" />
+          </div>
           <div class="mt-1 text-2xl font-semibold">
             {{ kpis.value()?.inyectoresActivos ?? 0 }} /
             {{ kpis.value()?.inyectoresTotales ?? 0 }}
@@ -327,6 +369,7 @@ function calcularRango(preset: Exclude<RangoPreset, 'personalizado'>): { desde: 
           <table class="w-full text-sm">
             <thead class="text-left text-neutral-500">
               <tr>
+                <th class="px-6 py-2 font-normal">No.</th>
                 <th class="px-6 py-2 font-normal">Fecha</th>
                 <th class="px-6 py-2 font-normal">Hora</th>
                 <th class="px-6 py-2 font-normal">Sala</th>
@@ -341,6 +384,7 @@ function calcularRango(preset: Exclude<RangoPreset, 'personalizado'>): { desde: 
             <tbody>
               @for (fila of inyecciones.value()?.content ?? []; track fila.id) {
                 <tr class="border-t border-neutral-100">
+                  <td class="px-6 py-2 text-neutral-500">#{{ fila.id }}</td>
                   <td class="px-6 py-2">{{ fila.fechaHoraInicio | date: 'dd-MM-yyyy' }}</td>
                   <td class="px-6 py-2">{{ fila.fechaHoraInicio | date: 'HH:mm' }}</td>
                   <td class="px-6 py-2">{{ fila.sala }}</td>
@@ -431,12 +475,82 @@ export default class ContrastInjectorDashboard {
   private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
   private theming = inject(Theming);
   private matDialog = inject(MatDialog);
+  private router = inject(Router);
   dialogRef: MatDialogRef<unknown> | null = null;
 
   private readonly dialogPresionTpl = viewChild.required<TemplateRef<unknown>>('dialogPresion');
 
+  constructor() {
+    // Julio 2026: el usuario señalo que este dashboard no se actualizaba
+    // solo cuando entraban inyecciones nuevas -- antes SOLO se refrescaba
+    // al cambiar un filtro o al presionar "Actualizar" a mano. Se agrega
+    // un sondeo cada 60s (solo en el navegador, nunca durante SSR) que
+    // llama al mismo recargarTodo() del boton manual. Esto NO reemplaza
+    // la sincronizacion real del inyector (que sigue corriendo cada 15
+    // min en el backend, ver SincronizacionInyectorService) -- solo
+    // asegura que esta pantalla refleje los datos ya sincronizados sin
+    // que el usuario tenga que recargar la pagina o dar clic el mismo.
+    if (this.esNavegador) {
+      interval(60_000)
+        .pipe(takeUntilDestroyed())
+        .subscribe(() => this.recargarTodo());
+    }
+  }
+
+  // Julio 2026: tarjetas KPI clickeables, a peticion explicita del
+  // usuario, hacia el modulo dedicado mas cercano a cada concepto (ver
+  // investigacion previa: "Inyecciones en el periodo" y "Contraste
+  // utilizado" NO tienen a donde redirigir -- la unica vista de
+  // inyecciones es la tabla que ya esta en esta misma pantalla, asi que
+  // esas 2 tarjetas se quedan sin click).
+  irAMermas() {
+    const { desde, hasta } = this.rangoFechas();
+    this.router.navigate(['/admin/insumos/mermas'], {
+      queryParams: {
+        fechaInicio: `${desde}T00:00:00`,
+        fechaFin: `${hasta}T23:59:59`,
+        salaId: this.salaId(),
+        identificadorAnatomicoId: this.identificadorAnatomicoId(),
+        agenteId: this.agenteId(),
+        estado: this.estado(),
+        soloConAlertaEda: this.soloAlertaEda() || undefined,
+      },
+    });
+  }
+
+  // Nota: el filtro "estado" del dashboard (COMPLETADA/ABORTADA/ERROR,
+  // sobre Inyeccion) NO corresponde a nada en la pantalla de
+  // extravasaciones (que filtra por estadoEda: SIN_REFERENCIA/EN_RANGO/
+  // FUERA_DE_RANGO, sobre EventoExtravasacion) -- son conceptos
+  // distintos, asi que no se manda. Lo que si corresponde 1:1: el rango
+  // de fechas, y el chip "Solo alertas EDA" -> preseleccionar
+  // estadoEda=FUERA_DE_RANGO alla (que es exactamente lo que ese chip
+  // significa en este dashboard).
+  irAExtravasaciones() {
+    const { desde, hasta } = this.rangoFechas();
+    this.router.navigate(['/admin/extravasaciones/alertas'], {
+      queryParams: {
+        desde,
+        hasta,
+        estadoEda: this.soloAlertaEda() ? 'FUERA_DE_RANGO' : undefined,
+      },
+    });
+  }
+
+  // Nota: /admin/mantenimiento es la pantalla de "Mantenimiento
+  // predictivo" (riesgo de falla, calibracion) -- lista los mismos
+  // inyectores pero con ese enfoque, no con un conteo activo/inactivo
+  // puro. Es el destino mas cercano que existe hoy para "Inyectores
+  // activos"; no hay una pantalla de inventario/estado de equipos aparte.
+  irAMantenimiento() {
+    this.router.navigate(['/admin/mantenimiento']);
+  }
+
   // --- Estado de filtros (signals, atados directamente a los mat-select) ---
-  rango = signal<RangoPreset>('hoy');
+  // Default cambiado a "Ultimos 30 dias" a peticion del usuario (antes
+  // era "hoy", que dejaba el dashboard casi vacio en sedes con poco
+  // volumen diario).
+  rango = signal<RangoPreset>('30d');
   salaId = signal<number | undefined>(undefined);
   identificadorAnatomicoId = signal<number | undefined>(undefined);
   agenteId = signal<number | undefined>(undefined);
@@ -539,6 +653,42 @@ export default class ContrastInjectorDashboard {
       ),
   });
 
+  // Merma julio 2026: misma barra de filtros que "inyecciones" (sin
+  // pagina/tamanio, es un agregado), pegando a /resumen-filtrado en vez
+  // de /inyecciones -- alimenta la tarjeta "Merma con estos filtros".
+  mermaFiltrada = rxResource({
+    params: () => ({
+      ...this.rangoFechas(),
+      salaId: this.salaId(),
+      identificadorAnatomicoId: this.identificadorAnatomicoId(),
+      agenteId: this.agenteId(),
+      estado: this.estado(),
+      soloConAlertaEda: this.soloAlertaEda() || undefined,
+    }),
+    stream: ({ params }) =>
+      ssrSeguro(
+        this.esNavegador,
+        () =>
+          this.api.getMermaFiltrada({
+            fechaInicio: `${params.desde}T00:00:00`,
+            fechaFin: `${params.hasta}T23:59:59`,
+            salaId: params.salaId,
+            identificadorAnatomicoId: params.identificadorAnatomicoId,
+            agenteId: params.agenteId,
+            estado: params.estado,
+            soloConAlertaEda: params.soloConAlertaEda,
+          }),
+        {
+          volumenProgramadoMl: 0,
+          volumenRealMl: 0,
+          volumenMermaMl: 0,
+          porcentajeMerma: 0,
+          volumenMermaPeriodoAnteriorMl: null,
+          variacionPorcentual: null,
+        }
+      ),
+  });
+
   usoContrasteChart = computed(() => {
     const datos = this.usoContraste.value() ?? [];
     const isDark = this.theming.isDark();
@@ -603,5 +753,10 @@ export default class ContrastInjectorDashboard {
     this.usoContraste.reload();
     this.distribucion.reload();
     this.inyecciones.reload();
+    // Bug corregido julio 2026: faltaba refrescar la tarjeta "Merma con
+    // estos filtros" -- se quedaba desactualizada aun despues de dar
+    // clic en "Actualizar" (se agrego despues de escribir este metodo la
+    // primera vez y no se incluyo aqui).
+    this.mermaFiltrada.reload();
   }
 }

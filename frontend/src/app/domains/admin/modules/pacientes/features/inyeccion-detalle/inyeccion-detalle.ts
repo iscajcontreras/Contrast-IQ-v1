@@ -39,7 +39,7 @@ import { InyeccionDetalleApiService } from '@/app/domains/admin/modules/paciente
           </div>
         </div>
         <div class="flex-auto"></div>
-        <button matButton="outlined" routerLink="/admin/paciente">
+        <button matButton="outlined" routerLink="/admin/paciente" queryParamsHandling="preserve">
           <mat-icon svgIcon="arrow-left" class="mr-1 size-4" />
           Volver al dashboard de paciente
         </button>
@@ -300,7 +300,26 @@ import { InyeccionDetalleApiService } from '@/app/domains/admin/modules/paciente
 
         <!-- Comparativo planeado / programado / real -->
         <mat-card appearance="outlined">
-          <div class="p-6 pb-0 text-lg font-medium">Comparativo por fase: planeado / programado / real</div>
+          <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 p-6 pb-0">
+            <div class="text-lg font-medium">Comparativo por fase: planeado / programado / real</div>
+            <!-- Merma total: pregunta explicita del usuario -- "hay algun
+                 lugar donde pueda ver si hubo merma de esa inyeccion".
+                 Se calcula sumando programado/real de todas las fases
+                 (mismo campo que usa el modulo de Merma de insumos, solo
+                 que aqui es el total de ESTA inyeccion, no de un rango
+                 de fechas). -->
+            @if (mermaTotal(); as merma) {
+              <div class="text-sm">
+                Merma total de esta inyeccion:
+                <span class="font-semibold" [class.text-red-600]="merma.volumenMermaMl > 0">
+                  {{ merma.volumenMermaMl | number: '1.0-1' }} ml
+                </span>
+                @if (merma.volumenProgramadoMl > 0) {
+                  <span class="text-neutral-500">({{ merma.porcentaje | number: '1.0-1' }}%)</span>
+                }
+              </div>
+            }
+          </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead class="text-left text-neutral-500">
@@ -309,6 +328,7 @@ import { InyeccionDetalleApiService } from '@/app/domains/admin/modules/paciente
                   <th class="px-6 py-2 font-normal">Planeado</th>
                   <th class="px-6 py-2 font-normal">Programado</th>
                   <th class="px-6 py-2 font-normal">Real</th>
+                  <th class="px-6 py-2 font-normal">Merma</th>
                 </tr>
               </thead>
               <tbody>
@@ -349,10 +369,20 @@ import { InyeccionDetalleApiService } from '@/app/domains/admin/modules/paciente
                         <span class="text-neutral-400">Sin dato</span>
                       }
                     </td>
+                    <td class="px-6 py-2">
+                      @if (fase.realVolumenProgramadoMl !== null && fase.realVolumenRealMl !== null) {
+                        @let mermaFase = fase.realVolumenProgramadoMl - fase.realVolumenRealMl;
+                        <span [class.text-red-600]="mermaFase > 0">
+                          {{ mermaFase | number: '1.0-1' }} ml
+                        </span>
+                      } @else {
+                        <span class="text-neutral-400">Sin dato</span>
+                      }
+                    </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="4" class="px-6 py-6 text-center text-neutral-500">
+                    <td colspan="5" class="px-6 py-6 text-center text-neutral-500">
                       Sin fases registradas para esta inyeccion.
                     </td>
                   </tr>
@@ -440,6 +470,25 @@ export default class InyeccionDetalle {
           comparativoFases: [],
         }
       ),
+  });
+
+  // Julio 2026: el usuario pregunto si hay algun lugar en esta pantalla
+  // que muestre la merma de la inyeccion -- no lo habia, solo se veian
+  // programado/real por fase por separado. Se suma programado y real de
+  // TODAS las fases (mismo criterio que MermaService en el backend) para
+  // dar un total de la inyeccion completa, ademas del desglose por fase
+  // agregado en la tabla de abajo.
+  protected mermaTotal = computed(() => {
+    const fases = this.detalle.value()?.comparativoFases ?? [];
+    let volumenProgramadoMl = 0;
+    let volumenRealMl = 0;
+    for (const fase of fases) {
+      volumenProgramadoMl += fase.realVolumenProgramadoMl ?? 0;
+      volumenRealMl += fase.realVolumenRealMl ?? 0;
+    }
+    const volumenMermaMl = volumenProgramadoMl - volumenRealMl;
+    const porcentaje = volumenProgramadoMl > 0 ? (volumenMermaMl / volumenProgramadoMl) * 100 : 0;
+    return { volumenProgramadoMl, volumenRealMl, volumenMermaMl, porcentaje };
   });
 
   protected edad = computed(() => {

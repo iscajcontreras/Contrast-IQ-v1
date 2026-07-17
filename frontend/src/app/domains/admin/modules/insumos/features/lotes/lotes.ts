@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { DatePipe, isPlatformBrowser } from '@angular/common';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { form, FormField, required, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCard } from '@angular/material/card';
@@ -31,6 +32,7 @@ import {
   selector: 'lotes-contraste',
   imports: [
     DatePipe,
+    RouterLink,
     MatButtonModule,
     MatIconModule,
     MatCard,
@@ -63,34 +65,43 @@ import {
         </button>
       </div>
 
-      <!-- Filtros -->
-      <mat-card class="flex flex-wrap items-end gap-3 p-4" appearance="outlined">
-        <mat-form-field class="w-52">
-          <mat-select [(value)]="sedeId" placeholder="Todas las sedes">
-            <mat-option [value]="undefined">Todas las sedes</mat-option>
-            @for (sede of sedes.value(); track sede.id) {
-              <mat-option [value]="sede.id">{{ sede.etiqueta }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+      <!-- Filtros: una sola fila (scroll horizontal si no cabe en pantallas
+           angostas en vez de partirse en varias lineas), cada uno con su
+           mat-label indicando que filtra. -->
+      <mat-card class="overflow-x-auto p-4" appearance="outlined">
+        <div class="flex flex-nowrap items-end gap-3">
+          <mat-form-field class="w-52 shrink-0" subscriptSizing="dynamic">
+            <mat-label>Sede</mat-label>
+            <mat-select [(value)]="sedeId" placeholder="Todas las sedes">
+              <mat-option [value]="undefined">Todas las sedes</mat-option>
+              @for (sede of sedes.value(); track sede.id) {
+                <mat-option [value]="sede.id">{{ sede.etiqueta }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
 
-        <mat-form-field class="w-52">
-          <mat-select [(value)]="agenteId" placeholder="Todos los agentes">
-            <mat-option [value]="undefined">Todos los agentes</mat-option>
-            @for (agente of agentes.value(); track agente.id) {
-              <mat-option [value]="agente.id">{{ agente.etiqueta }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+          <mat-form-field class="w-52 shrink-0" subscriptSizing="dynamic">
+            <mat-label>Agente de contraste</mat-label>
+            <mat-select [(value)]="agenteId" placeholder="Todos los agentes">
+              <mat-option [value]="undefined">Todos los agentes</mat-option>
+              @for (agente of agentes.value(); track agente.id) {
+                <mat-option [value]="agente.id">{{ agente.etiqueta }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
 
-        <mat-chip-listbox class="ml-auto">
-          <mat-chip-option
-            [selected]="proximosACaducar()"
-            (click)="proximosACaducar.set(!proximosACaducar())"
-          >
-            Proximos a caducar (30 dias)
-          </mat-chip-option>
-        </mat-chip-listbox>
+          <div class="ml-auto flex shrink-0 flex-col gap-y-1">
+            <span class="text-xs text-neutral-500">Vigencia del lote</span>
+            <mat-chip-listbox>
+              <mat-chip-option
+                [selected]="proximosACaducar()"
+                (click)="proximosACaducar.set(!proximosACaducar())"
+              >
+                Proximos a caducar (30 dias)
+              </mat-chip-option>
+            </mat-chip-listbox>
+          </div>
+        </div>
       </mat-card>
 
       <!-- Tabla -->
@@ -111,7 +122,18 @@ import {
             <tbody>
               @for (l of lotes.value()?.content ?? []; track l.id) {
                 <tr class="border-t border-neutral-100">
-                  <td class="px-6 py-2 font-medium">{{ l.numeroLote }}</td>
+                  <td class="px-6 py-2 font-medium">
+                    <span class="inline-flex items-center gap-x-1.5">
+                      {{ l.numeroLote }}
+                      @if (l.tieneInyecciones) {
+                        <mat-icon
+                          svgIcon="syringe"
+                          class="size-4 shrink-0 text-primary-600"
+                          title="Este lote ya tiene inyecciones realizadas"
+                        />
+                      }
+                    </span>
+                  </td>
                   <td class="px-6 py-2">{{ l.agente }}</td>
                   <td class="px-6 py-2">{{ l.sede }}</td>
                   <td class="px-6 py-2">{{ l.cantidadMl }} ml</td>
@@ -207,28 +229,38 @@ import {
         </div>
 
         <div class="max-h-96 overflow-y-auto">
-          <table class="w-full text-sm">
+          <table class="w-full min-w-max text-sm">
             <thead class="text-left text-neutral-500">
               <tr>
-                <th class="py-2 pr-4 font-normal">Fecha</th>
-                <th class="py-2 pr-4 font-normal">Paciente</th>
-                <th class="py-2 pr-4 font-normal">Sede / Sala</th>
-                <th class="py-2 pr-4 font-normal">Protocolo</th>
-                <th class="py-2 pr-4 font-normal">Estado</th>
+                <th class="py-2 pr-4 font-normal whitespace-nowrap">#</th>
+                <th class="py-2 pr-4 font-normal whitespace-nowrap">Fecha</th>
+                <th class="py-2 pr-4 font-normal whitespace-nowrap">Paciente</th>
+                <th class="py-2 pr-4 font-normal whitespace-nowrap">Sede / Sala</th>
+                <th class="py-2 pr-4 font-normal whitespace-nowrap">Protocolo</th>
+                <th class="py-2 pr-4 font-normal whitespace-nowrap">Estado</th>
               </tr>
             </thead>
             <tbody>
               @for (t of trazabilidad.value() ?? []; track t.inyeccionId) {
                 <tr class="border-t border-neutral-100">
-                  <td class="py-2 pr-4">{{ t.fechaHoraInyeccion | date: 'short' }}</td>
-                  <td class="py-2 pr-4">{{ t.pacienteNombre ?? t.pacienteIdentificador }}</td>
-                  <td class="py-2 pr-4">{{ t.sede }} / {{ t.sala }}</td>
-                  <td class="py-2 pr-4">{{ t.protocolo }}</td>
-                  <td class="py-2 pr-4">{{ t.estadoInyeccion }}</td>
+                  <td class="py-2 pr-4 whitespace-nowrap">
+                    <a
+                      [routerLink]="['/admin', 'paciente', 'inyeccion', t.inyeccionId]"
+                      (click)="dialogRef?.close()"
+                      class="text-primary-600 hover:underline"
+                    >
+                      #{{ t.inyeccionId }}
+                    </a>
+                  </td>
+                  <td class="py-2 pr-4 whitespace-nowrap">{{ t.fechaHoraInyeccion | date: 'short' }}</td>
+                  <td class="py-2 pr-4 whitespace-nowrap">{{ t.pacienteNombre ?? t.pacienteIdentificador }}</td>
+                  <td class="py-2 pr-4 whitespace-nowrap">{{ t.sede }} / {{ t.sala }}</td>
+                  <td class="py-2 pr-4 whitespace-nowrap">{{ t.protocolo }}</td>
+                  <td class="py-2 pr-4 whitespace-nowrap">{{ t.estadoInyeccion }}</td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="5" class="py-4 text-center text-neutral-500">
+                  <td colspan="6" class="py-4 text-center text-neutral-500">
                     Ninguna inyeccion registrada usa este lote todavia.
                   </td>
                 </tr>

@@ -34,6 +34,19 @@ export interface DistribucionProtocolo {
   porcentaje: number;
 }
 
+// Merma julio 2026: misma forma que MermaResumenDTO del backend. Los 2
+// campos de tendencia quedan null cuando viene de /resumen-filtrado (no
+// aplica tendencia con filtros arbitrarios de sala/agente/estado, solo
+// con el rango de fechas del modulo dedicado de Merma de insumos).
+export interface MermaResumen {
+  volumenProgramadoMl: number;
+  volumenRealMl: number;
+  volumenMermaMl: number;
+  porcentajeMerma: number;
+  volumenMermaPeriodoAnteriorMl: number | null;
+  variacionPorcentual: number | null;
+}
+
 export interface InyeccionResumen {
   id: number;
   fechaHoraInicio: string;
@@ -154,5 +167,19 @@ export class ContrastInjectorApiService {
   // Grafica de presion vs. tiempo (boton "Ver presion" en la tabla)
   getSeriePresion(inyeccionId: number): Observable<PuntoPresion[]> {
     return this.http.get<PuntoPresion[]>(`${API_BASE}/inyecciones/${inyeccionId}/presion`);
+  }
+
+  // Merma julio 2026: tarjeta "Merma con estos filtros" del dashboard --
+  // mismos filtros que getInyecciones (reusa FiltroInyecciones), pero
+  // pega a /api/insumos/mermas/resumen-filtrado en vez de /inyecciones.
+  getMermaFiltrada(filtro: FiltroInyecciones): Observable<MermaResumen> {
+    let params = new HttpParams();
+    Object.entries(filtro).forEach(([clave, valor]) => {
+      if (clave === 'page' || clave === 'size') return; // no aplica a este endpoint
+      if (valor !== undefined && valor !== null && valor !== '') {
+        params = params.set(clave, String(valor));
+      }
+    });
+    return this.http.get<MermaResumen>(`${API_BASE}/insumos/mermas/resumen-filtrado`, { params });
   }
 }

@@ -14,6 +14,9 @@ export interface Lote {
   activo: boolean;
   vencido: boolean;
   diasParaCaducar: number;
+  // Julio 2026: indicador visual "ya tiene inyecciones realizadas" -- ver
+  // LoteService.buscar (backend), calculado en batch por pagina.
+  tieneInyecciones: boolean;
 }
 
 export interface PaginaLotes {
@@ -155,6 +158,20 @@ export interface PaginaMermaInyeccion {
   totalElements: number;
 }
 
+// Julio 2026: filtros "completos" (los mismos que la barra del dashboard
+// de Inyecciones de contraste), usados SOLO por resumenFiltrado -- ver
+// nota en mermas.ts sobre por que por-sede/por-insumo/por-inyeccion se
+// quedan solo con fecha por ahora.
+export interface FiltroMermaCompleto {
+  fechaInicio: string;
+  fechaFin: string;
+  salaId?: number;
+  identificadorAnatomicoId?: number;
+  agenteId?: number;
+  estado?: string;
+  soloConAlertaEda?: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class MermasApiService {
   private http = inject(HttpClient);
@@ -162,6 +179,20 @@ export class MermasApiService {
 
   resumen(desde: string, hasta: string): Observable<MermaResumen> {
     return this.http.get<MermaResumen>(`${this.base}/resumen`, { params: { desde, hasta } });
+  }
+
+  // Llega desde el dashboard de Inyecciones de contraste (tarjeta "Merma
+  // con estos filtros") -- misma fuente que alimenta esa tarjeta
+  // (MermaController.resumenFiltrado). No trae tendencia (ver
+  // MermaResumenDTO / MermaService.resumenConFiltros en el backend).
+  resumenFiltrado(filtro: FiltroMermaCompleto): Observable<MermaResumen> {
+    let params = new HttpParams();
+    Object.entries(filtro).forEach(([clave, valor]) => {
+      if (valor !== undefined && valor !== null && valor !== '') {
+        params = params.set(clave, String(valor));
+      }
+    });
+    return this.http.get<MermaResumen>(`${this.base}/resumen-filtrado`, { params });
   }
 
   porSede(desde: string, hasta: string): Observable<MermaPorSede[]> {
@@ -176,5 +207,14 @@ export class MermasApiService {
     return this.http.get<PaginaMermaInyeccion>(`${this.base}/por-inyeccion`, {
       params: { desde, hasta, page: String(page), size: String(size) },
     });
+  }
+
+  // --- Catalogos para los filtros extra (sala, identificador, agente) ---
+  getSalas(): Observable<OpcionCatalogo[]> {
+    return this.http.get<OpcionCatalogo[]>(`${environment.apiBaseUrl}/catalogos/salas`);
+  }
+
+  getIdentificadoresAnatomicos(): Observable<OpcionCatalogo[]> {
+    return this.http.get<OpcionCatalogo[]>(`${environment.apiBaseUrl}/catalogos/identificadores-anatomicos`);
   }
 }

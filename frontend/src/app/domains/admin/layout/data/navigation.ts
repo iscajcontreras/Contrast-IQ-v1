@@ -95,6 +95,20 @@ export const NAVIGATION: NavigationItem[] = [
     ],
   },
   {
+    id: 'extravasaciones',
+    label: 'Seguridad del paciente',
+    description: 'Alertas de extravasacion (EDA) pendientes de revision',
+    children: [
+      {
+        id: 'extravasaciones/alertas',
+        label: 'Alertas de extravasacion',
+        icon: 'shield-alert',
+        route: '/admin/extravasaciones/alertas',
+        moduloCodigo: 'EXTRAVASACIONES',
+      },
+    ],
+  },
+  {
     id: 'reportes',
     label: 'Reportes',
     description: 'Comparativas ejecutivas entre sedes',

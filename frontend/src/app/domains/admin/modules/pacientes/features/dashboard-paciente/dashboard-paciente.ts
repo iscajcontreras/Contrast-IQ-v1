@@ -3,6 +3,7 @@ import {
   Component,
   PLATFORM_ID,
   TemplateRef,
+  effect,
   inject,
   signal,
   viewChild,
@@ -10,7 +11,7 @@ import {
 import { rxResource } from '@angular/core/rxjs-interop';
 import { of } from 'rxjs';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCard } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -274,41 +275,43 @@ import {
         <mat-card appearance="outlined">
           <div class="p-6 pb-0 text-lg font-medium">Historial de inyecciones</div>
           <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full min-w-max text-sm">
               <thead class="text-left text-neutral-500">
                 <tr>
-                  <th class="px-6 py-2 font-normal">Fecha</th>
-                  <th class="px-6 py-2 font-normal">Sede / Sala</th>
-                  <th class="px-6 py-2 font-normal">Protocolo</th>
-                  <th class="px-6 py-2 font-normal">Agente</th>
-                  <th class="px-6 py-2 font-normal">Volumen</th>
-                  <th class="px-6 py-2 font-normal">Dosis (DLP)</th>
-                  <th class="px-6 py-2 font-normal">Presion</th>
-                  <th class="px-6 py-2 font-normal">EDA</th>
-                  <th class="px-6 py-2 font-normal">Operador</th>
-                  <th class="px-6 py-2 font-normal">Estado</th>
+                  <th class="px-6 py-2 font-normal whitespace-nowrap">#</th>
+                  <th class="px-6 py-2 font-normal whitespace-nowrap">Fecha</th>
+                  <th class="px-6 py-2 font-normal whitespace-nowrap">Sede / Sala</th>
+                  <th class="px-6 py-2 font-normal whitespace-nowrap">Protocolo</th>
+                  <th class="px-6 py-2 font-normal whitespace-nowrap">Agente</th>
+                  <th class="px-6 py-2 font-normal whitespace-nowrap">Volumen</th>
+                  <th class="px-6 py-2 font-normal whitespace-nowrap">Dosis (DLP)</th>
+                  <th class="px-6 py-2 font-normal whitespace-nowrap">Presion</th>
+                  <th class="px-6 py-2 font-normal whitespace-nowrap">EDA</th>
+                  <th class="px-6 py-2 font-normal whitespace-nowrap">Operador</th>
+                  <th class="px-6 py-2 font-normal whitespace-nowrap">Estado</th>
                   <th class="px-6 py-2 font-normal"></th>
                 </tr>
               </thead>
               <tbody>
                 @for (fila of historial.value() ?? []; track fila.inyeccionId) {
                   <tr class="border-t border-neutral-100">
-                    <td class="px-6 py-2">{{ fila.fechaHoraInicio | date: 'dd-MM-yyyy HH:mm' }}</td>
-                    <td class="px-6 py-2">{{ fila.sede }} / {{ fila.sala }}</td>
-                    <td class="px-6 py-2">{{ fila.protocolo }}</td>
-                    <td class="px-6 py-2">{{ fila.agentePrincipal }}</td>
-                    <td class="px-6 py-2">{{ fila.volumenTotalMl }} ml</td>
-                    <td class="px-6 py-2">{{ fila.dlpMgyCm ? fila.dlpMgyCm + ' mGy·cm' : '—' }}</td>
-                    <td class="px-6 py-2">{{ fila.presionMaximaPsi ?? '—' }} psi</td>
-                    <td class="px-6 py-2">
+                    <td class="px-6 py-2 whitespace-nowrap">#{{ fila.inyeccionId }}</td>
+                    <td class="px-6 py-2 whitespace-nowrap">{{ fila.fechaHoraInicio | date: 'dd-MM-yyyy HH:mm' }}</td>
+                    <td class="px-6 py-2 whitespace-nowrap">{{ fila.sede }} / {{ fila.sala }}</td>
+                    <td class="px-6 py-2 whitespace-nowrap">{{ fila.protocolo }}</td>
+                    <td class="px-6 py-2 whitespace-nowrap">{{ fila.agentePrincipal }}</td>
+                    <td class="px-6 py-2 whitespace-nowrap">{{ fila.volumenTotalMl }} ml</td>
+                    <td class="px-6 py-2 whitespace-nowrap">{{ fila.dlpMgyCm ? fila.dlpMgyCm + ' mGy·cm' : '—' }}</td>
+                    <td class="px-6 py-2 whitespace-nowrap">{{ fila.presionMaximaPsi ?? '—' }} psi</td>
+                    <td class="px-6 py-2 whitespace-nowrap">
                       @if (fila.edaHabilitado) {
                         <span class="rounded-full bg-neutral-100 px-2 py-0.5 text-neutral-700">Habilitado</span>
                       } @else {
                         <span class="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">Deshabilitado</span>
                       }
                     </td>
-                    <td class="px-6 py-2">{{ fila.operador }}</td>
-                    <td class="px-6 py-2">
+                    <td class="px-6 py-2 whitespace-nowrap">{{ fila.operador }}</td>
+                    <td class="px-6 py-2 whitespace-nowrap">
                       @if (fila.tieneAlertaEda) {
                         <span class="rounded-full bg-red-50 px-2 py-0.5 text-red-600">
                           EDA fuera de rango
@@ -319,9 +322,10 @@ import {
                         </span>
                       }
                     </td>
-                    <td class="px-6 py-2">
+                    <td class="px-6 py-2 whitespace-nowrap">
                       <a
                         [routerLink]="['/admin', 'paciente', 'inyeccion', fila.inyeccionId]"
+                        queryParamsHandling="preserve"
                         class="whitespace-nowrap text-primary-600 hover:underline"
                       >
                         Ver detalle
@@ -330,7 +334,7 @@ import {
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="11" class="px-6 py-6 text-center text-neutral-500">
+                    <td colspan="12" class="px-6 py-6 text-center text-neutral-500">
                       Este paciente no tiene inyecciones registradas todavia.
                     </td>
                   </tr>
@@ -399,12 +403,24 @@ export default class DashboardPaciente {
   private api = inject(PacientesApiService);
   private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
   private matDialog = inject(MatDialog);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   dialogRef: MatDialogRef<unknown> | null = null;
 
   private readonly dialogChecklistTpl = viewChild.required<TemplateRef<unknown>>('dialogChecklist');
 
-  protected busqueda = signal('');
-  protected pacienteSeleccionado = signal<PacienteResumen | null>(null);
+  // Julio 2026: bug reportado -- al entrar al detalle de una inyeccion
+  // (/admin/paciente/inyeccion/:id) y volver con "Volver al dashboard del
+  // paciente", este componente se destruye y se vuelve a crear (no hay
+  // RouteReuseStrategy configurada), lo que borraba la busqueda y el
+  // paciente seleccionado. Se corrige con el mismo patron ya usado en
+  // alertas.ts / mermas.ts: la busqueda y el paciente seleccionado se
+  // reflejan en los queryParams de la URL, y se rehidratan desde ahi al
+  // construir el componente.
+  private queryParams = this.route.snapshot.queryParamMap;
+
+  protected busqueda = signal(this.queryParams.get('busqueda') ?? '');
+  protected pacienteSeleccionado = signal<PacienteResumen | null>(this.construirPacienteDesdeUrl());
 
   protected resultados = rxResource({
     params: () => this.busqueda(),
@@ -453,18 +469,81 @@ export default class DashboardPaciente {
     stream: ({ params }) => (params ? ssrSeguro(this.esNavegador, () => this.api.historialChecklists(params), []) : of([])),
   });
 
+  constructor() {
+    // Cuando pacienteSeleccionado se rehidrata desde la URL solo se conoce
+    // el id (y opcionalmente nombre/expediente si venian en los
+    // queryParams); en cuanto "perfil" trae el detalle completo se
+    // sincronizan los campos de exhibicion (nombreCompleto,
+    // identificadorExterno, sexo), que es lo que lee el dialog de
+    // checklist directamente de pacienteSeleccionado() en vez de perfil.value().
+    effect(() => {
+      const detalle = this.perfil.value();
+      const actual = this.pacienteSeleccionado();
+      if (!detalle || !actual || detalle.id !== actual.id) return;
+      if (
+        actual.nombreCompleto !== detalle.nombreCompleto ||
+        actual.identificadorExterno !== detalle.identificadorExterno ||
+        actual.sexo !== detalle.sexo
+      ) {
+        this.pacienteSeleccionado.set({
+          id: detalle.id,
+          nombreCompleto: detalle.nombreCompleto,
+          identificadorExterno: detalle.identificadorExterno,
+          sexo: detalle.sexo,
+        });
+      }
+    });
+  }
+
   onBuscar(valor: string) {
     this.busqueda.set(valor);
     this.pacienteSeleccionado.set(null);
+    this.sincronizarUrl();
   }
 
   seleccionar(paciente: PacienteResumen) {
     this.pacienteSeleccionado.set(paciente);
+    this.sincronizarUrl();
   }
 
   limpiar() {
     this.pacienteSeleccionado.set(null);
     this.busqueda.set('');
+    this.sincronizarUrl();
+  }
+
+  // Reconstruye un paciente "stub" a partir de los queryParams (solo el id
+  // es indispensable -- perfil.value() completa el resto en cuanto carga,
+  // ver el effect() del constructor). Se usa al re-crear el componente
+  // despues de volver desde /admin/paciente/inyeccion/:id.
+  private construirPacienteDesdeUrl(): PacienteResumen | null {
+    const id = this.queryParams.get('pacienteId');
+    if (!id || Number.isNaN(Number(id))) return null;
+    return {
+      id: Number(id),
+      identificadorExterno: this.queryParams.get('pacienteExpediente') ?? '',
+      nombreCompleto: this.queryParams.get('pacienteNombre'),
+      sexo: '',
+    };
+  }
+
+  // Refleja busqueda/pacienteSeleccionado en la URL (replaceUrl para no
+  // llenar el historial de navegacion con cada tecla/seleccion) de forma
+  // que, al volver desde el detalle de una inyeccion, este componente se
+  // recree pero se rehidrate desde queryParams en vez de arrancar vacio.
+  private sincronizarUrl() {
+    const paciente = this.pacienteSeleccionado();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        busqueda: this.busqueda() || null,
+        pacienteId: paciente?.id ?? null,
+        pacienteNombre: paciente?.nombreCompleto ?? null,
+        pacienteExpediente: paciente?.identificadorExterno || null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   iniciales(nombre: string | null | undefined): string {

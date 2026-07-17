@@ -4,6 +4,7 @@ import com.contrastiq.backend.dto.MermaInyeccionDTO;
 import com.contrastiq.backend.dto.MermaPorInsumoDTO;
 import com.contrastiq.backend.dto.MermaPorSedeDTO;
 import com.contrastiq.backend.dto.MermaResumenDTO;
+import com.contrastiq.backend.dto.filtro.FiltroInyeccionDTO;
 import com.contrastiq.backend.security.RequierePermiso;
 import com.contrastiq.backend.service.MermaService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,40 @@ import java.util.List;
 public class MermaController {
 
     private final MermaService mermaService;
+
+    // Merma julio 2026: tarjeta nueva del dashboard "Inyecciones de
+    // contraste" ("Resultados con estos filtros" -> ahora merma real,
+    // filtrada igual que la tabla de abajo). Deliberadamente SIN
+    // @RequierePermiso(modulo = "INSUMOS_MERMAS", ...): a diferencia de
+    // los otros 4 endpoints de este controller (que son la pantalla
+    // dedicada de Merma de insumos), este lo consume el dashboard de
+    // Inyecciones, que hoy no exige ningun permiso de modulo especifico
+    // (ver InyeccionController/DashboardController) -- gatearlo con
+    // INSUMOS_MERMAS:VER le devolveria 403 a un rol que si puede ver el
+    // dashboard de inyecciones pero no tiene ese permiso (ej. RADIOLOGO,
+    // que no esta en el seed de accesos a INSUMOS_MERMAS).
+    @GetMapping("/resumen-filtrado")
+    public MermaResumenDTO resumenFiltrado(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaFin,
+            @RequestParam(required = false) Long sedeId,
+            @RequestParam(required = false) Long salaId,
+            @RequestParam(required = false) Long agenteId,
+            @RequestParam(required = false) Long identificadorAnatomicoId,
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) Boolean soloConAlertaEda) {
+        FiltroInyeccionDTO filtro = FiltroInyeccionDTO.builder()
+                .fechaInicio(fechaInicio)
+                .fechaFin(fechaFin)
+                .sedeId(sedeId)
+                .salaId(salaId)
+                .agenteId(agenteId)
+                .identificadorAnatomicoId(identificadorAnatomicoId)
+                .estado(estado)
+                .soloConAlertaEda(soloConAlertaEda)
+                .build();
+        return mermaService.resumenConFiltros(filtro);
+    }
 
     @GetMapping("/resumen")
     @RequierePermiso(modulo = "INSUMOS_MERMAS", permiso = "VER")

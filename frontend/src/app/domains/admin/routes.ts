@@ -58,6 +58,16 @@ const routes: Routes = [
       },
 
       // -----------------------------------------------------------------------
+      // Extravasaciones (alertas EDA) -- julio 2026: modulo nuevo, a donde
+      // ahora redirige la tarjeta "Alertas de extravasacion" del dashboard
+      // de Inyecciones de contraste.
+      // -----------------------------------------------------------------------
+      {
+        path: 'extravasaciones',
+        loadChildren: () => import('./modules/extravasaciones/routes'),
+      },
+
+      // -----------------------------------------------------------------------
       // Reportes ejecutivos
       // -----------------------------------------------------------------------
       {

@@ -47,9 +47,9 @@ export class SchemeSwitcher {
   // State
   protected scheme = computed(() => this.theming.scheme());
   protected schemes: { label: string; value: Scheme }[] = [
-    { label: 'Light', value: 'light' },
-    { label: 'Dark', value: 'dark' },
-    { label: 'System', value: 'system' },
+    { label: 'Claro', value: 'light' },
+    { label: 'Oscuro', value: 'dark' },
+    { label: 'Sistema', value: 'system' },
   ];
 
   updateScheme(scheme: Scheme) {

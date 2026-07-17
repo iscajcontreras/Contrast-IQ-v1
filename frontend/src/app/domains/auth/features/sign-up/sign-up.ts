@@ -41,11 +41,11 @@ export default class AuthSignUp {
     company: '',
   });
   protected signUpForm = form(this.signUpFormModel, (form) => {
-    required(form.name, { message: 'You must enter your name' });
-    required(form.email, { message: 'You must enter an email address' });
-    email(form.email, { message: 'You must enter a valid email address' });
-    required(form.password, { message: 'You must enter a password' });
-    required(form.company, { message: 'You must enter your company name' });
+    required(form.name, { message: 'Debes ingresar tu nombre' });
+    required(form.email, { message: 'Debes ingresar un correo electronico' });
+    email(form.email, { message: 'Debes ingresar un correo electronico valido' });
+    required(form.password, { message: 'Debes ingresar una contrasena' });
+    required(form.company, { message: 'Debes ingresar tu institucion o sede' });
   });
 
   protected error = signal<string | null>(null);

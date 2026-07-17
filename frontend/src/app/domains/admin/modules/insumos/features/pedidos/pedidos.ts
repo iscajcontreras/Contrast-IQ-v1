@@ -1,8 +1,9 @@
 import { DatePipe, isPlatformBrowser } from '@angular/common';
-import { Component, PLATFORM_ID, inject } from '@angular/core';
+import { Component, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatCard } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSelect } from '@angular/material/select';
 import { MatOption } from '@angular/material/autocomplete';
 import { ssrSeguro } from '@/app/core/ssr/ssr-seguro';
@@ -13,7 +14,7 @@ import {
 
 @Component({
   selector: 'pedidos-reabastecimiento',
-  imports: [DatePipe, MatCard, MatFormFieldModule, MatSelect, MatOption],
+  imports: [DatePipe, MatCard, MatFormFieldModule, MatPaginatorModule, MatSelect, MatOption],
   template: `
     <div
       class="@container mx-auto flex w-full max-w-7xl flex-auto flex-col gap-4 p-6 sm:gap-6 lg:p-10 lg:pt-8"
@@ -41,7 +42,7 @@ import {
               </tr>
             </thead>
             <tbody>
-              @for (p of pedidos.value() ?? []; track p.id) {
+              @for (p of pedidosPagina(); track p.id) {
                 <tr class="border-t border-neutral-100">
                   <td class="px-6 py-2">{{ p.fechaSolicitud | date: 'dd-MM-yyyy HH:mm' }}</td>
                   <td class="px-6 py-2">{{ p.sede }}</td>
@@ -75,6 +76,13 @@ import {
             </tbody>
           </table>
         </div>
+        <mat-paginator
+          [length]="pedidos.value()?.length ?? 0"
+          [pageSize]="pageSize()"
+          [pageIndex]="pageIndex()"
+          [pageSizeOptions]="[10, 20, 50]"
+          (page)="onPagina($event)"
+        ></mat-paginator>
       </mat-card>
     </div>
   `,
@@ -84,6 +92,24 @@ export default class PedidosReabastecimiento {
   private esNavegador = isPlatformBrowser(inject(PLATFORM_ID));
 
   protected pedidos = rxResource({ stream: () => ssrSeguro(this.esNavegador, () => this.api.listarPedidos(), []) });
+
+  // Julio 2026: paginacion agregada a peticion del usuario. El endpoint
+  // GET /api/pedidos-reabastecimiento no esta paginado en el backend (regresa
+  // la lista completa) -- se pagina en el cliente en vez de tocar el backend,
+  // suficiente para el volumen real de pedidos de un hospital.
+  protected pageIndex = signal(0);
+  protected pageSize = signal(10);
+
+  protected pedidosPagina = computed(() => {
+    const todos = this.pedidos.value() ?? [];
+    const inicio = this.pageIndex() * this.pageSize();
+    return todos.slice(inicio, inicio + this.pageSize());
+  });
+
+  onPagina(evento: PageEvent) {
+    this.pageIndex.set(evento.pageIndex);
+    this.pageSize.set(evento.pageSize);
+  }
 
   cambiarEstado(pedido: PedidoReabastecimiento, nuevoEstado: string) {
     this.api.actualizarPedido(pedido.id, nuevoEstado).subscribe(() => this.pedidos.reload());

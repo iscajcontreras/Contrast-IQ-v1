@@ -7,7 +7,6 @@ import {
   validate,
 } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCard } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,7 +25,6 @@ import { AuthApiService } from '@/app/core/auth/auth-api.service';
     MatIconModule,
     MatCheckboxModule,
     FormField,
-    MatCard,
   ],
 })
 export default class AuthResetPassword {
@@ -45,9 +43,9 @@ export default class AuthResetPassword {
     passwordValidation: '',
   });
   protected resetPasswordForm = form(this.resetPasswordFormModel, (form) => {
-    required(form.password, { message: 'You must enter a password' });
+    required(form.password, { message: 'Debes ingresar una contrasena' });
     required(form.passwordValidation, {
-      message: 'You must enter a password',
+      message: 'Debes confirmar la contrasena',
     });
     validate(form.passwordValidation, (ctx) => {
       const password = ctx.valueOf(form.password);
@@ -58,7 +56,7 @@ export default class AuthResetPassword {
       if (password !== passwordValidation) {
         return {
           kind: 'mismatch',
-          message: 'The passwords do not match',
+          message: 'Las contrasenas no coinciden',
         };
       }
 
@@ -73,7 +71,7 @@ export default class AuthResetPassword {
     this.error.set(null);
 
     if (!this.token) {
-      this.error.set('El enlace no incluye un token valido. Solicita uno nuevo desde "Forgot password".');
+      this.error.set('El enlace no incluye un token valido. Solicita uno nuevo desde "Recuperar contrasena".');
       return;
     }
 

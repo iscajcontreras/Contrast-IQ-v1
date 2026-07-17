@@ -4,7 +4,10 @@ import com.contrastiq.backend.dto.MermaInyeccionDTO;
 import com.contrastiq.backend.dto.MermaPorInsumoDTO;
 import com.contrastiq.backend.dto.MermaPorSedeDTO;
 import com.contrastiq.backend.dto.MermaResumenDTO;
+import com.contrastiq.backend.dto.filtro.FiltroInyeccionDTO;
+import com.contrastiq.backend.model.enums.EstadoInyeccion;
 import com.contrastiq.backend.repository.InyeccionFaseRepository;
+import com.contrastiq.backend.security.UsuarioAutenticadoService;
 import com.contrastiq.backend.util.ValidadorRangoFechas;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -28,6 +31,42 @@ import java.util.List;
 public class MermaService {
 
     private final InyeccionFaseRepository inyeccionFaseRepository;
+    private final UsuarioAutenticadoService usuarioAutenticadoService;
+
+    // Merma julio 2026: para la tarjeta nueva del dashboard "Inyecciones
+    // de contraste", pedida explicitamente por el usuario para que
+    // refleje LOS MISMOS filtros de la barra de arriba (rango, sala,
+    // agente, identificador anatomico, estado, solo-alertas-eda) -- no
+    // solo el rango de fechas como el resto de tarjetas KPI de ese
+    // dashboard (ver DashboardKpiDTO/DashboardService, que no reciben
+    // esos filtros). No trae tendencia (volumenMermaPeriodoAnteriorMl /
+    // variacionPorcentual quedan null): con sala/agente/estado
+    // arbitrarios de por medio, "el mismo periodo inmediato anterior" ya
+    // no es una comparacion clara como en resumen(desde, hasta).
+    public MermaResumenDTO resumenConFiltros(FiltroInyeccionDTO filtro) {
+        ValidadorRangoFechas.validar(filtro.getFechaInicio(), filtro.getFechaFin());
+
+        // Fix DEF-03 (mismo criterio que InyeccionService.buscar): un
+        // usuario restringido a una sede no puede pedir la merma de otra
+        // por query param -- se ignora lo que mande el frontend y se
+        // fuerza su propia sede.
+        Long restriccion = usuarioAutenticadoService.sedeIdRestriccion();
+        Long sedeEfectiva = restriccion != null ? restriccion : filtro.getSedeId();
+
+        EstadoInyeccion estado = filtro.getEstado() != null ? EstadoInyeccion.valueOf(filtro.getEstado()) : null;
+        boolean soloAlerta = Boolean.TRUE.equals(filtro.getSoloConAlertaEda());
+
+        BigDecimal[] sumas = sumas(inyeccionFaseRepository.sumasConFiltros(
+                filtro.getFechaInicio(), filtro.getFechaFin(), sedeEfectiva, filtro.getSalaId(),
+                filtro.getAgenteId(), filtro.getIdentificadorAnatomicoId(), estado, soloAlerta));
+
+        BigDecimal programado = sumas[0];
+        BigDecimal real = sumas[1];
+        BigDecimal merma = programado.subtract(real);
+        BigDecimal porcentaje = porcentaje(merma, programado);
+
+        return new MermaResumenDTO(programado, real, merma, porcentaje, null, null);
+    }
 
     public MermaResumenDTO resumen(LocalDateTime desde, LocalDateTime hasta) {
         ValidadorRangoFechas.validar(desde, hasta);

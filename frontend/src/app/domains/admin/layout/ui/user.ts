@@ -64,7 +64,7 @@ import { AuthService } from '@/app/core/auth/auth.service';
         [matMenuTriggerFor]="appearanceMenu"
       >
         <mat-icon svgIcon="sun-moon" />
-        Appearance
+        Apariencia
       </button>
       <mat-divider />
       <button
@@ -72,7 +72,7 @@ import { AuthService } from '@/app/core/auth/auth.service';
         (click)="cerrarSesion()"
       >
         <mat-icon svgIcon="log-out" />
-        Sign out
+        Cerrar sesion
       </button>
     </mat-menu>
 
@@ -102,9 +102,9 @@ export class User {
   // State
   protected scheme = computed(() => this.theming.scheme());
   protected schemes: { label: string; value: Scheme }[] = [
-    { label: 'Light', value: 'light' },
-    { label: 'Dark', value: 'dark' },
-    { label: 'System', value: 'system' },
+    { label: 'Claro', value: 'light' },
+    { label: 'Oscuro', value: 'dark' },
+    { label: 'Sistema', value: 'system' },
   ];
 
   // Nombre y correo reales de quien inicio sesion, obtenidos de

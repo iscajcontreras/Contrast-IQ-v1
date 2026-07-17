@@ -7,7 +7,6 @@ import {
   submit,
 } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCard } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -25,7 +24,6 @@ import { AuthApiService } from '@/app/core/auth/auth-api.service';
     MatIconModule,
     MatCheckboxModule,
     FormField,
-    MatCard,
   ],
 })
 export default class AuthForgotPassword {
@@ -37,8 +35,8 @@ export default class AuthForgotPassword {
     email: '',
   });
   protected forgotPasswordForm = form(this.forgotPasswordFormModel, (form) => {
-    required(form.email, { message: 'You must enter an email address' });
-    email(form.email, { message: 'You must enter a valid email address' });
+    required(form.email, { message: 'Debes ingresar un correo electronico' });
+    email(form.email, { message: 'Debes ingresar un correo electronico valido' });
   });
 
   protected enviado = signal(false);

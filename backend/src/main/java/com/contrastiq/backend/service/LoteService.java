@@ -25,6 +25,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 // Trazabilidad de insumos: registrar lotes de agente de contraste
 // (numero de lote, caducidad, cantidad recibida) y, ante un recall del
@@ -50,9 +51,18 @@ public class LoteService {
         Long restriccion = usuarioAutenticadoService.sedeIdRestriccion();
         Long sedeEfectiva = restriccion != null ? restriccion : sedeId;
 
-        return loteRepository
-                .findAll(LoteAgenteContrasteSpecification.conFiltros(sedeEfectiva, agenteId, soloVigentes, proximosACaducar), pageable)
-                .map(this::aDto);
+        Page<LoteAgenteContraste> pagina = loteRepository
+                .findAll(LoteAgenteContrasteSpecification.conFiltros(sedeEfectiva, agenteId, soloVigentes, proximosACaducar), pageable);
+
+        // Julio 2026: indicador "ya tiene inyecciones" en el listado -- un
+        // solo IN-query con los ids de ESTA pagina, no una consulta por
+        // fila (ver InyeccionFaseRepository.findLoteIdsConInyecciones).
+        List<Long> idsPagina = pagina.getContent().stream().map(LoteAgenteContraste::getId).toList();
+        Set<Long> loteIdsConInyecciones = idsPagina.isEmpty()
+                ? Set.of()
+                : Set.copyOf(inyeccionFaseRepository.findLoteIdsConInyecciones(idsPagina));
+
+        return pagina.map(l -> aDto(l, loteIdsConInyecciones.contains(l.getId())));
     }
 
     @Transactional
@@ -85,7 +95,8 @@ public class LoteService {
                 Map.of("numeroLote", guardado.getNumeroLote(), "agente", agente.getNombreComercial(),
                         "sede", sede.getNombre()));
 
-        return aDto(guardado);
+        // Un lote recien creado nunca puede tener inyecciones todavia.
+        return aDto(guardado, false);
     }
 
     // El corazon de la funcionalidad: dado un lote, quienes lo recibieron.
@@ -123,7 +134,7 @@ public class LoteService {
                 .toList();
     }
 
-    private LoteDTO aDto(LoteAgenteContraste l) {
+    private LoteDTO aDto(LoteAgenteContraste l, boolean tieneInyecciones) {
         long diasParaCaducar = ChronoUnit.DAYS.between(LocalDate.now(), l.getFechaCaducidad());
         return LoteDTO.builder()
                 .id(l.getId())
@@ -136,6 +147,7 @@ public class LoteService {
                 .activo(l.getActivo())
                 .vencido(diasParaCaducar < 0)
                 .diasParaCaducar(diasParaCaducar)
+                .tieneInyecciones(tieneInyecciones)
                 .build();
     }
 }

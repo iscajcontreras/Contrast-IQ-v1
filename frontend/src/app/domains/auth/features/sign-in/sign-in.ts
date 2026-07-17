@@ -38,10 +38,10 @@ export default class AuthSignIn {
     password: '',
   });
   protected signInForm = form(this.signInFormModel, (form) => {
-    required(form.email, { message: 'You must enter an email address' });
-    email(form.email, { message: 'You must enter a valid email address' });
+    required(form.email, { message: 'Debes ingresar un correo electronico' });
+    email(form.email, { message: 'Debes ingresar un correo electronico valido' });
 
-    required(form.password, { message: 'You must enter a password' });
+    required(form.password, { message: 'Debes ingresar una contrasena' });
   });
 
   protected error = signal<string | null>(null);
