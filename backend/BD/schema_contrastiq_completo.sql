@@ -1,6 +1,6 @@
 -- =====================================================================
 -- schema_contrastiq_completo.sql
--- Schema completo de ContrastIQ (43 tablas), consolidado a partir del
+-- Schema completo de ContrastIQ (37 tablas), consolidado a partir del
 -- backup real que el usuario exporto de su MySQL en vivo
 -- (BackupFullContrastIQ_Schema.sql, mysqldump --no-data, 2026-07-16).
 -- Ya incluye TODAS las migraciones aplicadas hasta ahora, en este orden:
@@ -12,25 +12,36 @@
 --   4. migration_modulo_mermas.sql (modulo INSUMOS_MERMAS, el 9o)
 --   5. migration_fix_qa_hallazgos.sql (usuarios.bloqueado_hasta, fix DEF-01)
 --   6. fix_trazabilidad_lotes.sql (UPDATE, no cambia estructura -- no aplica aqui)
+--   7. migration_modulo_extravasaciones.sql (modulo EXTRAVASACIONES, el 10o
+--      -- solo INSERT en modulos/rol_modulo_permiso, no agrega tablas)
 --
 -- Confirmado en este archivo: usuarios.bloqueado_hasta YA esta presente,
 -- o sea que migration_fix_qa_hallazgos.sql ya se corrio contra la BD real.
 --
--- ADVERTENCIA (contradiccion detectada, no resuelta silenciosamente):
--- este backup incluye 6 tablas -- tenants, tenant_planes,
--- tenant_dominios, tenant_branding, tenant_branding_historial y
--- tenant_modulo_habilitado -- que NO tienen ninguna entidad JPA ni
--- repositorio/servicio/controller correspondiente en el codigo backend
--- actual (com.contrastiq.backend.model). Existen en la base de datos
--- real pero el backend de ContrastIQ no las usa todavia. Si son de un
--- modulo multi-tenant/branding en desarrollo aparte, o si son residuo
--- de otro proyecto de referencia (ej. CEROGAS GPS) y no deberian estar
--- en esta base, es una decision que solo el usuario puede confirmar --
--- no se tocaron ni se eliminaron de este script.
+-- LIMPIEZA (17 de julio de 2026, a peticion explicita del usuario): el
+-- backup real traia 6 tablas -- tenants, tenant_planes, tenant_dominios,
+-- tenant_branding, tenant_branding_historial y tenant_modulo_habilitado
+-- -- que NO tenian ninguna entidad JPA ni repositorio/servicio/controller
+-- correspondiente en el codigo backend (com.contrastiq.backend.model), ni
+-- ninguna referencia a "tenant" en el codigo fuente. Se le senalo esta
+-- contradiccion al usuario (posible residuo de un modulo multi-tenant/
+-- branding no implementado, o de otro proyecto de referencia) y eligio
+-- explicitamente eliminarlas de este script -- ya no estan en este archivo
+-- ni en datos_dummy_contrastiq.sql. Si el backend llega a implementar ese
+-- modulo mas adelante, estas tablas deberan recrearse desde una migracion
+-- nueva con sus entidades JPA correspondientes.
 --
--- Para partir de cero: correr este archivo primero (crea la BD y las
--- 43 tablas vacias), y despues, si se quiere, datos_dummy_contrastiq.sql
--- (dataset de prueba de 2 anios).
+-- Para partir de cero, correr en este orden:
+--   1. schema_contrastiq_completo.sql (este archivo -- crea la BD y las
+--      37 tablas vacias).
+--   2. datos_dummy_contrastiq.sql (opcional, dataset de prueba de 2 anios
+--      -- NO incluye el catalogo modulos/permisos/rol_modulo_permiso, ver
+--      su propia cabecera).
+--   3. migration_catalogo_modulos_permisos.sql (siembra los 10 modulos,
+--      5 permisos y la matriz Rol x Modulo x Permiso -- sin este paso el
+--      sistema de permisos por modulo queda vacio y nadie puede entrar a
+--      ningun modulo). El orden entre el paso 2 y el 3 no importa entre
+--      si, pero ambos van despues del paso 1.
 -- =====================================================================
 
 CREATE DATABASE  IF NOT EXISTS `contrast_iq` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
@@ -706,158 +717,6 @@ CREATE TABLE `sedes` (
 ) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Table structure for table `tenant_branding`
---
-
-DROP TABLE IF EXISTS `tenant_branding`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `tenant_branding` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `tenant_id` bigint unsigned NOT NULL,
-  `nombre_comercial_mostrado` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `logo_principal_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `logo_claro_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `logo_oscuro_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `logo_login_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `favicon_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `color_primario` varchar(7) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#1565C0',
-  `color_error` varchar(7) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '#dc2626',
-  `esquema_tema` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'SISTEMA',
-  `email_soporte` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `telefono_soporte` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `direccion_fiscal` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `url_aviso_privacidad` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `url_terminos_condiciones` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `texto_pie_pagina` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `zona_horaria` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'America/Mexico_City',
-  `locale` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'es-MX',
-  `unidad_medida` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'METRICO',
-  `borrador_json` longtext COLLATE utf8mb4_unicode_ci,
-  `tiene_cambios_sin_publicar` tinyint(1) NOT NULL DEFAULT '0',
-  `version` int NOT NULL DEFAULT '1',
-  `publicado_en` datetime DEFAULT NULL,
-  `publicado_por_usuario_id` bigint unsigned DEFAULT NULL,
-  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `actualizado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `tenant_id` (`tenant_id`),
-  KEY `fk_tenant_branding_publicado_por` (`publicado_por_usuario_id`),
-  CONSTRAINT `fk_tenant_branding_publicado_por` FOREIGN KEY (`publicado_por_usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_tenant_branding_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `tenant_branding_historial`
---
-
-DROP TABLE IF EXISTS `tenant_branding_historial`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `tenant_branding_historial` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `tenant_id` bigint unsigned NOT NULL,
-  `version` int NOT NULL,
-  `snapshot_json` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  `publicado_por_usuario_id` bigint unsigned DEFAULT NULL,
-  `publicado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `fk_tenant_branding_hist_usuario` (`publicado_por_usuario_id`),
-  KEY `idx_tenant_branding_hist_tenant` (`tenant_id`,`version`),
-  CONSTRAINT `fk_tenant_branding_hist_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_tenant_branding_hist_usuario` FOREIGN KEY (`publicado_por_usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `tenant_dominios`
---
-
-DROP TABLE IF EXISTS `tenant_dominios`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `tenant_dominios` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `tenant_id` bigint unsigned NOT NULL,
-  `tipo` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `valor` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `estado_verificacion` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDIENTE',
-  `es_principal` tinyint(1) NOT NULL DEFAULT '0',
-  `notas_verificacion` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `actualizado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `valor` (`valor`),
-  KEY `idx_tenant_dominio_tenant` (`tenant_id`),
-  CONSTRAINT `fk_tenant_dominio_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `tenant_modulo_habilitado`
---
-
-DROP TABLE IF EXISTS `tenant_modulo_habilitado`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `tenant_modulo_habilitado` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `tenant_id` bigint unsigned NOT NULL,
-  `modulo_id` bigint unsigned NOT NULL,
-  `habilitado` tinyint(1) NOT NULL DEFAULT '1',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_tenant_modulo` (`tenant_id`,`modulo_id`),
-  KEY `fk_tenant_modulo_modulo` (`modulo_id`),
-  CONSTRAINT `fk_tenant_modulo_modulo` FOREIGN KEY (`modulo_id`) REFERENCES `modulos` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_tenant_modulo_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `tenant_planes`
---
-
-DROP TABLE IF EXISTS `tenant_planes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `tenant_planes` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `codigo` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nombre` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `descripcion` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `permite_dominio_personalizado` tinyint(1) NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `codigo` (`codigo`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `tenants`
---
-
-DROP TABLE IF EXISTS `tenants`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `tenants` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `slug` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `nombre_comercial` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `razon_social` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `estado` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ACTIVO',
-  `es_default` tinyint(1) NOT NULL DEFAULT '0',
-  `plan_id` bigint unsigned DEFAULT NULL,
-  `creado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `actualizado_en` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `slug` (`slug`),
-  KEY `fk_tenant_plan` (`plan_id`),
-  CONSTRAINT `fk_tenant_plan` FOREIGN KEY (`plan_id`) REFERENCES `tenant_planes` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Table structure for table `tickets_soporte`
 --
 
