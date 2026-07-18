@@ -2,6 +2,13 @@
 # Build multi-stage: la primera etapa compila con Maven + JDK 17, la
 # segunda solo copia el .jar ya compilado a una imagen liviana con JRE 17
 # (no arrastra Maven ni el codigo fuente a la imagen final que corre).
+#
+# IMPORTANTE: este Dockerfile vive en la RAIZ del repo de GitHub
+# (Contrast-IQ-v1/Dockerfile), pero pom.xml y src/ estan adentro de
+# backend/BackEnd_ContrastIQ/ (repo monorepo: backend/, frontend/,
+# Postman/). Por eso los COPY de abajo llevan esa ruta completa desde la
+# raiz del repo -- Render arma el build context desde la raiz del repo
+# cuando "Root Directory" se deja vacio en la config del servicio.
 
 # --- Etapa 1: compilar ---
 FROM maven:3.9-eclipse-temurin-17 AS build
@@ -9,10 +16,10 @@ WORKDIR /app
 # Copiar primero solo el pom.xml y descargar dependencias -- Docker cachea
 # esta capa, asi que en rebuilds futuros (si solo cambia el codigo Java)
 # no vuelve a descargar todo Maven Central.
-COPY pom.xml .
+COPY backend/BackEnd_ContrastIQ/pom.xml .
 RUN mvn -B dependency:go-offline
 # Ahora si copiar el codigo fuente completo y compilar el jar.
-COPY src ./src
+COPY backend/BackEnd_ContrastIQ/src ./src
 RUN mvn -B clean package -DskipTests
 
 # --- Etapa 2: imagen de ejecucion ---
