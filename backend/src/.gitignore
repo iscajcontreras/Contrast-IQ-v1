@@ -1,0 +1,31 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Compilados / IDE
+*.class
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Llave RSA del JWT (JwtSecurityConfig) -- material criptografico real,
+# equivalente a una contrasena. Nunca debe subirse al repo.
+keys/
+
+# Carpeta de importacion de archivos CSV del inyector (SincronizacionInyectorService)
+importaciones-iris/
+
+# Logs
+*.log
+
+# SQL de datos dummy (pesan mucho para un repo Git -- se comparten aparte,
+# no se versionan)
+datos_dummy_contrastiq.sql
+datos_dummy_contrastiq.sql.gz
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
