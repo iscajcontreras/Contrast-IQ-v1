@@ -3,5 +3,5 @@
 // Ajusta apiBaseUrl a la URL real donde quede publicado el backend.
 export const environment = {
   production: true,
-  apiBaseUrl: 'https://api.tu-dominio.com/api',
+  apiBaseUrl: 'https://contrast-iq-v1.onrender.com/api',
 };
